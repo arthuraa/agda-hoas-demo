@@ -32,86 +32,113 @@ postulate ƛ-·-disj : ∀ t t₁ t₂ → ƛ t ≢ t₁ · t₂
 
 -- This is the most general elimination principle that I can think of.  It is a
 -- direct translation of the canonical principle for indexed terms.
---
--- TODO: Is it OK that the result A is not restricted to closed terms?
 
 postulate
-  Term-elim : {@♭ l : Level}
-              (@♭ A : ∀ n → (Vec Term n → Term) → Set l) →
-              (@♭ _ : ∀ n x → A n (λ γ → lookup γ x)) →
-              (@♭ _ : ∀ n t → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
-              (@♭ _ : ∀ n t1 t2 → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
-              (@♭ n : ℕ) (@♭ t : Vec Term n → Term) → A n t
+  Term-elim : {l : Level}
+    (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
+    (∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
+    (∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
+    (@♭ n : ℕ) (@♭ t : Vec Term n → Term) → A n t
 
-{-
 postulate
-  Term-elim' : {@♭ l : Level}
-               (@♭ A : ∀ (@♭ n) → (@♭ Vec Term n → Term) → Set l) →
-               (@♭ _ : ∀ (@♭ n) (@♭ x) → A n (λ γ → lookup γ x)) →
-               (@♭ _ : ∀ (@♭ n) (@♭ t) → A (suc n) t → A n (λ γ → ƛ (λ (x : Term) → t (x ∷ γ)))) →
-               (@♭ _ : ∀ (@♭ n) (@♭ t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
-               (@♭ n : ℕ) (@♭ t : Vec Term n → Term) → A n t
--}
+  Term-elim-V : {l : Level}
+    (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
+    (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
+    (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
+    (@♭ n : ℕ) (@♭ x : Fin n) →
+    Term-elim A HV Hƛ H· n (λ γ → lookup γ x) ≡ HV n x
 
--- This is a special case of the previous lemma where we omit the context
+postulate
+  Term-elim-ƛ : {l : Level}
+    (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
+    (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
+    (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
+    (@♭ n : ℕ) (@♭ t : Vec Term (suc n) → Term) →
+    Term-elim A HV Hƛ H· n (λ γ → ƛ (λ x → t (x ∷ γ))) ≡
+    Hƛ n t (Term-elim A HV Hƛ H· (suc n) t)
 
-elim-no-ctx : {@♭ l : Level} (@♭ A : Term → Set l) →
-  (@♭ _ : (∀ t1 t2 → A t1 → A t2 → A (t1 · t2))) →
-  (@♭ _ : (∀ f → (∀ t → A t → A (f t)) → A (ƛ f))) →
-  (@♭ t : Term) → A t
-elim-no-ctx {l} A H· Hƛ t =
-  Term-elim A' H2` H2ƛ H2· zero (λ _ → t) [] (λ ())
+postulate
+  Term-elim-· : {l : Level}
+    (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
+    (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
+    (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
+    (@♭ n : ℕ) (@♭ t1 t2 : Vec Term n → Term) →
+    Term-elim A HV Hƛ H· n (λ γ → t1 γ · t2 γ) ≡
+    H· n t1 t2 (Term-elim A HV Hƛ H· n t1) (Term-elim A HV Hƛ H· n t2)
+
+fin-elim : ∀ {l : Level} {n} (A : Fin (suc n) → Set l) →
+  A zero → (∀ i → A (suc i)) → ∀ i → A i
+fin-elim A AZ AS zero = AZ
+fin-elim A AZ AS (suc i) = AS i
+
+elim1g : {l : Level}
+        (A : Term → Set l) →
+        (∀ t → (∀ x → A x → A (t x)) → A (ƛ t)) →
+        (∀ t1 t2 → A t1 → A t2 → A (t1 · t2)) →
+        ∀ (@♭ n) (@♭ t : Vec Term n → Term) →
+        ∀ γ → (∀ i → A (lookup γ i)) → A (t γ)
+elim1g {l} A Hƛ H· n t γ Aγ =
+  Term-elim A' HV' Hƛ' H·' n t γ Aγ
   where
-  A' : ∀ n → (Vec Term n → Term) → Set l
-  A' n t = ∀ γ → (∀ x → A (lookup γ x)) → A (t γ)
+  A' : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l
+  A' n t = ∀ γ → (∀ i → A (lookup γ i)) → A (t γ)
 
-  H2` : ∀ n x → A' n (λ γ → lookup γ x)
-  H2` n x γ z = z x
+  HV' : ∀ (@♭ n x) → A' n (λ γ → lookup γ x)
+  HV' n x γ Aγ = Aγ x
 
-  H2ƛ : ∀ n t → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
-  H2ƛ n t IHt γ Hγ = Hƛ (λ x → t (x ∷ γ)) (λ x Hx → IHt (x ∷ γ) (IHγ' x Hx))
-    where IHγ' : ∀ x → A x → ∀ i → A (lookup (x ∷ γ) i)
-          IHγ' x Hx zero = Hx
-          IHγ' x Hx (suc i) = Hγ i
+  Hƛ' : ∀ (@♭ n t) → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
+  Hƛ' n t IHt γ Aγ = Hƛ (λ x → t (x ∷ γ))
+    (λ x Ax → IHt (x ∷ γ) (fin-elim (λ i → A (lookup (x ∷ γ) i)) Ax Aγ))
 
-  H2· : ∀ n t1 t2 → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
-  H2· n t1 t2 IH1 IH2 γ Hγ = H· (t1 γ) (t2 γ) (IH1 γ Hγ) (IH2 γ Hγ)
+  H·' : ∀ (@♭ n t1 t2) → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
+  H·' n t1 t2 IH1 IH2 γ Aγ = H· (t1 γ) (t2 γ) (IH1 γ Aγ) (IH2 γ Aγ)
 
+elim1 : {l : Level}
+        (A : Term → Set l) →
+        (∀ t → (∀ x → A x → A (t x)) → A (ƛ t)) →
+        (∀ t1 t2 → A t1 → A t2 → A (t1 · t2)) →
+        ∀ (@♭ t) → A t
+elim1 {l} A Hƛ H· t =
+  elim1g A Hƛ H· zero (λ _ → t) [] (λ ())
 
-elim-ctx-fixed : {@♭ l : Level}
-  {@♭ n : ℕ} (@♭ A : (Vec Term n → Term) → Set l) →
-  (@♭ _ : ∀ x → A (λ γ → lookup γ x)) →
-  (@♭ _ : ∀ (t : Vec Term (suc n) → Term) →
-            (∀ t' → A t' → A (λ γ → t (t' γ ∷ γ))) →
-            A (λ γ → ƛ (λ x → t (x ∷ γ)))) →
-  (@♭ _ : ∀ t₁ t₂ → A t₁ → A t₂ → A (λ γ → t₁ γ · t₂ γ)) →
-  (@♭ t : Vec Term n → Term) → A t
-elim-ctx-fixed {l} {n} A H` Hƛ H· t =
-  Term-elim A2 H2` H2ƛ H2· n t (λ γ → γ) H`
+elim2g : {l : Level}
+         (A : Term → Term → Set l) →
+         (∀ t1 t2 → (∀ x1 x2 → A x1 x2 → A (t1 x1) (t2 x2)) →
+           A (ƛ t1) (ƛ t2)) →
+         (∀ t11 t12 t21 t22 → A t11 t12 → A t21 t22 →
+           A (t11 · t21) (t12 · t22)) →
+         ∀ (@♭ n) (@♭ t : Vec Term n → Term) →
+         ∀ γ1 γ2 → (∀ i → A (lookup γ1 i) (lookup γ2 i)) → A (t γ1) (t γ2)
+elim2g {l} A Hƛ H· n t γ1 γ2 Aγ =
+  Term-elim A' HV' Hƛ' H·' n t γ1 γ2 Aγ
   where
-  A2 : ∀ m → (Vec Term m → Term) → Set l
-  A2 m t = ∀ (f : Vec Term n → Vec Term m) →
-           (∀ x → A (λ γ → lookup (f γ) x)) →
-           A (λ γ → t (f γ))
+  A' : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l
+  A' n t = ∀ γ1 γ2 → (∀ i → A (lookup γ1 i) (lookup γ2 i)) → A (t γ1) (t γ2)
 
-  H2` : ∀ m x → A2 m (λ γ → lookup γ x)
-  H2` m x f p = p x
+  HV' : ∀ (@♭ n x) → A' n (λ γ → lookup γ x)
+  HV' n x γ1 γ2 Aγ = Aγ x
 
-  H2ƛ : ∀ m t → A2 (suc m) t → A2 m (λ γ → ƛ (λ x → t (x ∷ γ)))
-  H2ƛ m t IHt f pf = Hƛ g pg
-    where
-    g : Vec Term (suc n) → Term
-    g (x ∷ γ) = t (x ∷ f γ)
+  Hƛ' : ∀ (@♭ n t) → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
+  Hƛ' n t IHt γ1 γ2 Aγ = Hƛ (λ x → t (x ∷ γ1)) (λ x → t (x ∷ γ2))
+    λ x1 x2 Ax → IHt (x1 ∷ γ1) (x2 ∷ γ2)
+      (fin-elim (λ z → A (lookup (x1 ∷ γ1) z) (lookup (x2 ∷ γ2) z)) Ax Aγ)
 
-    pg : (t' : Vec Term n → Term) → A t' → A (λ γ → g (t' γ ∷ γ))
-    pg t' IHt' = IHt (λ γ → (t' γ ∷ f γ)) aux
-      where
-      aux : ∀ x → A (λ γ → lookup (t' γ ∷ f γ) x)
-      aux zero = IHt'
-      aux (suc x) = pf x
+  H·' : ∀ (@♭ n t1 t2) → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
+  H·' n t1 t2 IH1 IH2 γ1 γ2 Aγ =
+    H· (t1 γ1) (t1 γ2) (t2 γ1) (t2 γ2) (IH1 γ1 γ2 Aγ) (IH2 γ1 γ2 Aγ)
 
-  H2· : ∀ m t1 t2 → A2 m t1 → A2 m t2 → A2 m (λ γ → t1 γ · t2 γ)
-  H2· m t1 t2 IH1 IH2 f fp = H· (λ γ → t1 (f γ)) (λ γ → t2 (f γ)) (IH1 f fp) (IH2 f fp)
+elim2 : {l : Level}
+        (A : Term → Term → Set l) →
+        (∀ t1 t2 → (∀ x1 x2 → A x1 x2 → A (t1 x1) (t2 x2)) →
+          A (ƛ t1) (ƛ t2)) →
+        (∀ t11 t12 t21 t22 → A t11 t12 → A t21 t22 →
+          A (t11 · t21) (t12 · t22)) →
+        ∀ (@♭ t) → A t t
+elim2 A Hƛ H· t = elim2g A Hƛ H· zero (λ _ → t) [] [] (λ ())
 
 infix 2 _⇒_
 
