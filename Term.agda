@@ -8,7 +8,7 @@ open import Agda.Builtin.Equality.Rewrite
 open import Relation.Binary.PropositionalEquality
 open import Data.Empty
 open import Data.Unit
-open import Data.Product
+open import Data.Product hiding (∃; ∃!)
 open import Data.Sum
 open import Data.Nat
 open import Data.Fin hiding (_+_; cast)
