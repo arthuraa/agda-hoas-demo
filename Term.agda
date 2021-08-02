@@ -37,7 +37,8 @@ postulate
   Term-elim : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
     (∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
-    (∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (∀ (@♭ n) (@♭ t : Vec Term n → Term → Term) →
+       A (suc n) (λ γ → t (tail γ) (head γ)) → A n (λ γ → ƛ (t γ))) →
     (∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
     (@♭ n : ℕ) (@♭ t : Vec Term n → Term) → A n t
 
@@ -45,7 +46,8 @@ postulate
   Term-elim-V : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
     (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
-    (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (Hƛ : ∀ (@♭ n t) → A (suc n) (λ γ → t (tail γ) (head γ)) →
+                       A n (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
     (@♭ n : ℕ) (@♭ x : Fin n) →
     Term-elim A HV Hƛ H· n (λ γ → lookup γ x) ≡ HV n x
@@ -54,18 +56,20 @@ postulate
   Term-elim-ƛ : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
     (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
-    (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (Hƛ : ∀ (@♭ n t) → A (suc n) (λ γ → t (tail γ) (head γ)) →
+                       A n (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
     (@♭ n : ℕ) (@♭ t : Vec Term n → Term → Term) →
     Term-elim A HV Hƛ H· n (λ γ → ƛ (t γ)) ≡
-    Hƛ n (λ γ → t (tail γ) (head γ))
+    Hƛ n t
       (Term-elim A HV Hƛ H· (suc n) (λ γ → t (tail γ) (head γ)))
 
 postulate
   Term-elim-· : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l) →
     (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
-    (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
+    (Hƛ : ∀ (@♭ n t) → A (suc n) (λ γ → t (tail γ) (head γ)) →
+                       A n (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
     (@♭ n : ℕ) (@♭ t1 t2 : Vec Term n → Term) →
     Term-elim A HV Hƛ H· n (λ γ → t1 γ · t2 γ) ≡
@@ -95,8 +99,9 @@ elim1g {l} A Hƛ H· n t γ Aγ =
   HV' : ∀ (@♭ n x) → A' n (λ γ → lookup γ x)
   HV' n x γ Aγ = Aγ x
 
-  Hƛ' : ∀ (@♭ n t) → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
-  Hƛ' n t IHt γ Aγ = Hƛ (λ x → t (x ∷ γ))
+  Hƛ' : ∀ (@♭ n) (@♭ t : Vec Term n → Term → Term) →
+        A' (suc n) (λ γ → t (tail γ) (head γ)) → A' n (λ γ → ƛ (t γ))
+  Hƛ' n t IHt γ Aγ = Hƛ (t γ)
     (λ x Ax → IHt (x ∷ γ) (fin-elim (λ i → A (lookup (x ∷ γ) i)) Ax Aγ))
 
   H·' : ∀ (@♭ n t1 t2) → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
@@ -109,24 +114,10 @@ elim1g-ƛ : {l : Level}
   ∀ (@♭ n) (@♭ t : Vec Term n → Term → Term) →
   ∀ γ → (Aγ : ∀ i → A (lookup γ i)) →
   elim1g A Hλ H· n (λ γ → ƛ (t γ)) γ Aγ ≡
-  Hλ (λ x → t γ x)
+  Hλ (t γ)
      (λ x Ax → elim1g A Hλ H· (suc n) (λ γ → t (tail γ) (head γ)) (x ∷ γ)
                (fin-elim _ Ax Aγ))
-elim1g-ƛ {l} A Hƛ H· n t γ Aγ =
-  cong (λ f → f γ Aγ) (Term-elim-ƛ A' HV' Hƛ' H·' n t)
-  where
-  A' : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l
-  A' n t = ∀ γ → (∀ i → A (lookup γ i)) → A (t γ)
-
-  HV' : ∀ (@♭ n x) → A' n (λ γ → lookup γ x)
-  HV' n x γ Aγ = Aγ x
-
-  Hƛ' : ∀ (@♭ n t) → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
-  Hƛ' n t IHt γ Aγ = Hƛ (λ x → t (x ∷ γ))
-    (λ x Ax → IHt (x ∷ γ) (fin-elim (λ i → A (lookup (x ∷ γ) i)) Ax Aγ))
-
-  H·' : ∀ (@♭ n t1 t2) → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
-  H·' n t1 t2 IH1 IH2 γ Aγ = H· (t1 γ) (t2 γ) (IH1 γ Aγ) (IH2 γ Aγ)
+elim1g-ƛ A Hλ H· n t γ Aγ = refl
 
 elim1 : {l : Level}
         (A : Term → Set l) →
@@ -173,8 +164,10 @@ elim2g {l} A Hƛ H· n t γ1 γ2 Aγ =
   HV' : ∀ (@♭ n x) → A' n (λ γ → lookup γ x)
   HV' n x γ1 γ2 Aγ = Aγ x
 
-  Hƛ' : ∀ (@♭ n t) → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
-  Hƛ' n t IHt γ1 γ2 Aγ = Hƛ (λ x → t (x ∷ γ1)) (λ x → t (x ∷ γ2))
+  Hƛ' : ∀ (@♭ n) (@♭ t : Vec Term n → Term → Term) →
+        A' (suc n) (λ γ → t (tail γ) (head γ)) →
+        A' n (λ γ → ƛ (t γ))
+  Hƛ' n t IHt γ1 γ2 Aγ = Hƛ (t γ1) (t γ2)
     λ x1 x2 Ax → IHt (x1 ∷ γ1) (x2 ∷ γ2)
       (fin-elim (λ z → A (lookup (x1 ∷ γ1) z) (lookup (x2 ∷ γ2) z)) Ax Aγ)
 
