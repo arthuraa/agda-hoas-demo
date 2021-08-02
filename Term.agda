@@ -56,9 +56,10 @@ postulate
     (HV : ∀ (@♭ n x) → A n (λ γ → lookup γ x)) →
     (Hƛ : ∀ (@♭ n t) → A (suc n) t → A n (λ γ → ƛ (λ x → t (x ∷ γ)))) →
     (H· : ∀ (@♭ n t1 t2) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
-    (@♭ n : ℕ) (@♭ t : Vec Term (suc n) → Term) →
-    Term-elim A HV Hƛ H· n (λ γ → ƛ (λ x → t (x ∷ γ))) ≡
-    Hƛ n t (Term-elim A HV Hƛ H· (suc n) t)
+    (@♭ n : ℕ) (@♭ t : Vec Term n → Term → Term) →
+    Term-elim A HV Hƛ H· n (λ γ → ƛ (t γ)) ≡
+    Hƛ n (λ γ → t (tail γ) (head γ))
+      (Term-elim A HV Hƛ H· (suc n) (λ γ → t (tail γ) (head γ)))
 
 postulate
   Term-elim-· : {l : Level}
@@ -69,6 +70,10 @@ postulate
     (@♭ n : ℕ) (@♭ t1 t2 : Vec Term n → Term) →
     Term-elim A HV Hƛ H· n (λ γ → t1 γ · t2 γ) ≡
     H· n t1 t2 (Term-elim A HV Hƛ H· n t1) (Term-elim A HV Hƛ H· n t2)
+
+{-# REWRITE Term-elim-V #-}
+{-# REWRITE Term-elim-ƛ #-}
+{-# REWRITE Term-elim-· #-}
 
 fin-elim : ∀ {l : Level} {n} (A : Fin (suc n) → Set l) →
   A zero → (∀ i → A (suc i)) → ∀ i → A i
@@ -97,6 +102,32 @@ elim1g {l} A Hƛ H· n t γ Aγ =
   H·' : ∀ (@♭ n t1 t2) → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
   H·' n t1 t2 IH1 IH2 γ Aγ = H· (t1 γ) (t2 γ) (IH1 γ Aγ) (IH2 γ Aγ)
 
+elim1g-ƛ : {l : Level}
+  (A : Term → Set l) →
+  (Hλ : ∀ t → (∀ x → A x → A (t x)) → A (ƛ t)) →
+  (H· : ∀ t1 t2 → A t1 → A t2 → A (t1 · t2)) →
+  ∀ (@♭ n) (@♭ t : Vec Term n → Term → Term) →
+  ∀ γ → (Aγ : ∀ i → A (lookup γ i)) →
+  elim1g A Hλ H· n (λ γ → ƛ (t γ)) γ Aγ ≡
+  Hλ (λ x → t γ x)
+     (λ x Ax → elim1g A Hλ H· (suc n) (λ γ → t (tail γ) (head γ)) (x ∷ γ)
+               (fin-elim _ Ax Aγ))
+elim1g-ƛ {l} A Hƛ H· n t γ Aγ =
+  cong (λ f → f γ Aγ) (Term-elim-ƛ A' HV' Hƛ' H·' n t)
+  where
+  A' : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set l
+  A' n t = ∀ γ → (∀ i → A (lookup γ i)) → A (t γ)
+
+  HV' : ∀ (@♭ n x) → A' n (λ γ → lookup γ x)
+  HV' n x γ Aγ = Aγ x
+
+  Hƛ' : ∀ (@♭ n t) → A' (suc n) t → A' n (λ γ → ƛ (λ x → t (x ∷ γ)))
+  Hƛ' n t IHt γ Aγ = Hƛ (λ x → t (x ∷ γ))
+    (λ x Ax → IHt (x ∷ γ) (fin-elim (λ i → A (lookup (x ∷ γ) i)) Ax Aγ))
+
+  H·' : ∀ (@♭ n t1 t2) → A' n t1 → A' n t2 → A' n (λ γ → t1 γ · t2 γ)
+  H·' n t1 t2 IH1 IH2 γ Aγ = H· (t1 γ) (t2 γ) (IH1 γ Aγ) (IH2 γ Aγ)
+
 elim1 : {l : Level}
         (A : Term → Set l) →
         (∀ t → (∀ x → A x → A (t x)) → A (ƛ t)) →
@@ -104,6 +135,26 @@ elim1 : {l : Level}
         ∀ (@♭ t) → A t
 elim1 {l} A Hƛ H· t =
   elim1g A Hƛ H· zero (λ _ → t) [] (λ ())
+
+Res : Set
+Res = Term ⊎ (Term → Term)
+
+term-of-res : Res → Term
+term-of-res (inj₁ t) = t
+term-of-res (inj₂ t) = ƛ t
+
+res-· : Res → Term → Term
+res-· (inj₁ t₁) t₂ = t₁ · t₂
+res-· (inj₂ t₁) t₂ = t₁ t₂
+
+diag-aux : @♭ Term → Res
+diag-aux =
+  elim1 (λ _ → Res)
+    (λ _ t → inj₂ λ x → term-of-res (t x (inj₁ x)))
+    (λ _ _ t1 t2 → inj₁ (res-· t1 (term-of-res t2)))
+
+diag : @♭ Term → Term
+diag t = term-of-res (diag-aux t)
 
 elim2g : {l : Level}
          (A : Term → Term → Set l) →
