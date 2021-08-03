@@ -79,6 +79,29 @@ postulate
 {-# REWRITE Term-elim-ƛ #-}
 {-# REWRITE Term-elim-· #-}
 
+data ·-♭-spec : @♭ Term → Term → Term → Set where
+  intro : ∀ (@♭ t1 t2) → ·-♭-spec (t1 · t2) t1 t2
+
+·-♭ : ∀ {@♭ t} {t1} {t2} → t ≡ t1 · t2 → ·-♭-spec t t1 t2
+·-♭ {t} {t1} {t2} e =
+  Term-elim A HV Hƛ H· zero (λ _ → t) [] e refl
+  where
+  A : ∀ (@♭ n) → @♭ (Vec Term n → Term) → Set
+  A n t = ∀ (@♭ γ) → t γ ≡ t1 · t2 → n ≡ zero → ·-♭-spec (t γ) t1 t2
+
+  HV : _
+  HV .(suc _) zero γ _ ()
+  HV .(suc _) (suc x) γ _ ()
+
+  Hƛ : _
+  Hƛ n t _ γ e-t e-n with (ƛ-·-disj _ _ _ e-t)
+  ... | ()
+
+  H· : _
+  H· n t1 t2 _ _ γ e-t e-n with ·-inj _ _ _ _ e-t
+  ... | e1 , e2 rewrite sym e1 | sym e2 = intro (t1 γ) (t2 γ)
+
+
 fin-elim : ∀ {l : Level} {n} (A : Fin (suc n) → Set l) →
   A zero → (∀ i → A (suc i)) → ∀ i → A i
 fin-elim A AZ AS zero = AZ
