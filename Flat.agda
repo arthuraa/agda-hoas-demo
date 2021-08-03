@@ -17,3 +17,11 @@ map-♭ f (to-♭ x) = to-♭ (f x)
 to-♭-ℕ : ℕ → ♭ ℕ
 to-♭-ℕ zero = to-♭ zero
 to-♭-ℕ (suc n) = map-♭ suc (to-♭-ℕ n)
+
+data is-♭ {@♭ l} {@♭ A : Set l} : A → Set l where
+  intro-is-♭ : (@♭ x : A) → is-♭ x
+
+elim-is-♭ : ∀ {@♭ l} {@♭ A : Set l} → (P : A → Set l) →
+            (∀ (@♭ x) → P x) →
+            ∀ x → is-♭ x → P x
+elim-is-♭ P H .x (intro-is-♭ x) = H x
