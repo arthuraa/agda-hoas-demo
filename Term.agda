@@ -32,18 +32,18 @@ postulate ƛ-inj : ∀ t t' → ƛ t ≡ ƛ t' → t ≡ t'
 
 postulate ƛ-·-disj : ∀ t t₁ t₂ → ƛ t ≢ t₁ · t₂
 
-postulate Term-Type : {Γ : Ctx} → Type Γ
+postulate `Term : {Γ : Ctx} → Type Γ
 
-postulate ⟦Term-Type⟧ₜ : ∀ Γ → ⟦ Term-Type {Γ} ⟧ₜ ≡ λ γ → Term
+postulate ⟦`Term⟧ₜ : ∀ Γ → ⟦ `Term {Γ} ⟧ₜ ≡ λ γ → Term
 
-{-# REWRITE ⟦Term-Type⟧ₜ #-}
+{-# REWRITE ⟦`Term⟧ₜ #-}
 
 postulate
   Term-elim : {l : Level}
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
     (HV : ∀ (@♭ Γ) (@♭ v : Var Γ (λ _ → Term)) → A Γ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (cons Γ Term-Type) (λ γ → t (proj₁ γ) (proj₂ γ)) →
+      A (Γ `, `Term) (λ γ → t (proj₁ γ) (proj₂ γ)) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
@@ -55,7 +55,7 @@ postulate
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
     (HV : ∀ (@♭ Γ) (@♭ v : Var Γ (λ _ → Term)) → A Γ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (cons Γ Term-Type) (λ γ → t (proj₁ γ) (proj₂ γ)) →
+      A (Γ `, `Term) (λ γ → t (proj₁ γ) (proj₂ γ)) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
@@ -67,21 +67,21 @@ postulate
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
     (HV : ∀ (@♭ Γ) (@♭ v : Var Γ (λ _ → Term)) → A Γ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (cons Γ Term-Type) (λ γ → t (proj₁ γ) (proj₂ γ)) →
+      A (Γ `, `Term) (λ γ → t (proj₁ γ) (proj₂ γ)) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
     ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
     Term-elim A HV Hƛ H· Γ (λ γ → ƛ (t γ)) ≡
     Hƛ Γ t
-     (Term-elim A HV Hƛ H· (cons Γ Term-Type) (λ γ → t (proj₁ γ) (proj₂ γ)))
+     (Term-elim A HV Hƛ H· (Γ `, `Term) (λ γ → t (proj₁ γ) (proj₂ γ)))
 
 postulate
   Term-elim-· : {l : Level}
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
     (HV : ∀ (@♭ Γ) (@♭ v : Var Γ (λ _ → Term)) → A Γ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (cons Γ Term-Type) (λ γ → t (proj₁ γ) (proj₂ γ)) →
+      A (Γ `, `Term) (λ γ → t (proj₁ γ) (proj₂ γ)) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →

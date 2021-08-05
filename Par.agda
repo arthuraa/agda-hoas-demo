@@ -14,16 +14,12 @@ open import Data.Nat
 open import Data.Fin hiding (_+_; cast)
 open import Data.Vec
 open import Term
+open import Ctx
 
-infix 2 _⇒_
+infix 3 _⇒_
+infix 3 _`⇒_
 
 postulate _⇒_ : Term → Term → Set
-
-mutual
-
-
-
-
 
 postulate
   papp : ∀ {t1 t1' t2 t2'} →
@@ -32,7 +28,7 @@ postulate
     t1 · t2 ⇒ t1' · t2'
 
 postulate
-  pabs : ∀ t t' →
+  pabs : ∀ {t t'} →
     (∀ (x : Term) → x ⇒ x → t x ⇒ t' x) →
     ƛ t ⇒ ƛ t'
 
@@ -41,6 +37,52 @@ postulate
     (∀ (x : Term) → x ⇒ x → t1 x ⇒ t1' x) →
     t2 ⇒ t2' →
     (ƛ t1) · t2 ⇒ t1' t2'
+
+postulate
+  _`⇒_ : {@♭ Γ : Ctx} → (@♭ t1 t2 : ⟦ Γ ⟧ → Term) → Type Γ
+
+postulate
+  ⟦⇒-Type⟧ₜ : ∀ {@♭ Γ : Ctx} (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
+              ⟦ t1 `⇒ t2 ⟧ₜ ≡ λ γ → t1 γ ⇒ t2 γ
+
+{-# REWRITE ⟦⇒-Type⟧ₜ #-}
+
+Term-λ : {Γ : Ctx} → (⟦ Γ ⟧ → Term → Term) → ⟦ Γ `, `Term ⟧ → Term
+Term-λ t γ = t (proj₁ γ) (proj₂ γ)
+
+⇒-λ : {@♭ Γ : Ctx} {t1 t2 : ⟦ Γ ⟧ → Term → Term} →
+      (p : ∀ γ x → x ⇒ x → t1 γ x ⇒ t2 γ x) →
+      (γ : ⟦ Γ `, `Term `,  proj₂ `⇒ proj₂ ⟧) →
+      Term-λ t1 (proj₁ γ) ⇒ Term-λ t2 (proj₁ γ)
+
+⇒-λ {Γ} {t1} {t2} p ( ( γ , x ) , x⇒x ) = p γ x x⇒x
+
+postulate
+  ⇒-elim :
+    ∀ {l : Level} →
+    ∀ (A : ∀ (@♭ Γ) → (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
+           (@♭ p : ∀ γ → t1 γ ⇒ t2 γ) → Set l) →
+    ∀ (HV : ∀ (@♭ Γ) → (@♭ t t' : ⟦ Γ ⟧ → Term) →
+            ∀ (@♭ v : Var Γ (λ γ → t γ ⇒ t' γ)) →
+            A Γ t t' ⟦ v ⟧ᵥ) →
+    ∀ (H· : ∀ (@♭ Γ) → (@♭ t1 t1' t2 t2' : ⟦ Γ ⟧ → Term) →
+            ∀ (@♭ p1 : ∀ γ → t1 γ ⇒ t1' γ) →
+            ∀ (@♭ p2 : ∀ γ → t2 γ ⇒ t2' γ) →
+            A Γ t1 t1' p1 →
+            A Γ t2 t2' p2 →
+            A Γ _ _ (λ γ → papp (p1 γ) (p2 γ))) →
+    ∀ (Hƛ : ∀ (@♭ Γ) → (@♭ t t' : ⟦ Γ ⟧ → Term → Term) →
+            ∀ (@♭ p : ∀ γ x → x ⇒ x → t γ x ⇒ t' γ x) →
+            A (Γ `, `Term `, proj₂ `⇒ proj₂) _ _ (⇒-λ p) →
+            A Γ _ _ (λ γ → pabs (p γ))) →
+    ∀ (Hβ : ∀ (@♭ Γ) → (@♭ t1 t1' : ⟦ Γ ⟧ → Term → Term) →
+            ∀ (@♭ t2 t2' : ⟦ Γ ⟧ → Term) →
+            ∀ (@♭ p1 : ∀ γ x → x ⇒ x → t1 γ x ⇒ t1' γ x) →
+            ∀ (@♭ p2 : ∀ γ → t2 γ ⇒ t2' γ) →
+            A (Γ `, `Term `, proj₂ `⇒ proj₂) _ _ (⇒-λ p1) →
+            A Γ _ _ p2 →
+            A Γ _ _ (λ γ → pbeta (p1 γ) (p2 γ))) →
+    ∀ (@♭ Γ t1 t2 p) → A Γ t1 t2 p
 
 
 {-
