@@ -66,10 +66,10 @@ abs :
   ∀ γ → Term.abs t1 γ ⇒ Term.abs t1' γ
 abs p γ = p (tail γ) (head γ)
 
-up : ∀ {@♭ Γ Δ} → (Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) → Term.⟦ suc Δ ⟧ → Term.⟦ suc Γ ⟧
+up : ∀ {@♭ Γ} {Δ} → (Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) → Term.⟦ suc Δ ⟧ → Term.⟦ suc Γ ⟧
 up ts (x ∷ γ) = x ∷ ts γ
 
-⇒-up : ∀ {@♭ Γ Δ} →
+⇒-up : ∀ {@♭ Γ} {Δ} →
        ∀ {t t' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧} →
        (∀ γ i → lookup (t γ) i ⇒ lookup (t' γ) i) →
        ∀ γ i → lookup (up t γ) i ⇒ lookup (up t' γ) i
@@ -77,54 +77,50 @@ up ts (x ∷ γ) = x ∷ ts γ
 ⇒-up p (x ∷ γ) (suc i) = p γ i
 
 ⇒-subst-refl :
-  ∀ (@♭ Γ Δ) →
+  ∀ (@♭ Γ) →
   ∀ (@♭ t1 : Term.⟦ Γ ⟧ → Term) →
+  ∀ (Δ : Term.Ctx) →
   ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
   ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
   ∀ γ → t1 (t2 γ) ⇒ t1 (t2' γ)
-⇒-subst-refl Γ Δ t1 t2 t2' p2 γ =
-  Term-elim A HV Hƛ H· Γ t1 Δ t2 t2' p2 γ
+⇒-subst-refl Γ t1 =
+  Term-elim A HV Hƛ H· Γ t1
   where
+  -- Removing this annotation causes type checking to diverge
   A : ∀ (@♭ Γ) (@♭ t1 : Term.⟦ Γ ⟧ → Term) → Set
   A Γ t1 =
-    ∀ (@♭ Δ) →
+    ∀ Δ →
     ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
     ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
     ∀ γ → t1 (t2 γ) ⇒ t1 (t2' γ)
 
   HV : _
-  HV Γ x1 Δ t2 t2' p2 γ = p2 γ x1
+  HV Γ x1 = λ Δ t2 t2' p2 γ → p2 γ x1
 
   Hƛ : _
-  Hƛ Γ t1 IH1 Δ t2 t2' p2 γ =
+  Hƛ Γ t1 IH1 = λ Δ t2 t2' p2 γ →
     pabs (λ x → IH1 (suc Δ) (up t2) (up t2') (⇒-up p2) (x ∷ γ))
 
   H· : _
-  H· Γ t1 t1' IH1 IH1' Δ t2 t2' p2 γ =
+  H· Γ t1 t1' IH1 IH1' = λ Δ t2 t2' p2 γ →
     papp (IH1 Δ t2 t2' p2 γ) (IH1' Δ t2 t2' p2 γ)
 
 ⇒-subst-gen :
-  ∀ (@♭ Γ Δ) →
+  ∀ (@♭ Γ) →
   ∀ (@♭ t1 t1' : Term.⟦ Γ ⟧ → Term) →
-  ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
   ∀ (@♭ p1 : ∀ γ   → t1 γ ⇒ t1' γ) →
+  ∀ Δ →
+  ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
   ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
   ∀ γ → t1 (t2 γ) ⇒ t1' (t2' γ)
-⇒-subst-gen Γ Δ t1 t1' t2 t2' p1 p2 γ =
-  ⇒-elim A HR H· Hƛ Hβ Γ t1 t1' p1 Δ t2 t2' p2 γ
+⇒-subst-gen Γ t1 t1' p1 =
+  ⇒-elim _ HR H· Hƛ Hβ Γ t1 t1' p1
   where
-  A : ∀ (@♭ Γ) (@♭ t1 t1' : Term.⟦ Γ ⟧ → Term) → Set
-  A Γ t1 t1' =
-    ∀ (@♭ Δ) →
-    ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
-    ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
-    ∀ γ → t1 (t2 γ) ⇒ t1' (t2' γ)
-
   HR : _
-  HR Γ t1 Δ t2 t2' p2 γ = ⇒-subst-refl Γ Δ t1 t2 t2' p2 γ
+  HR Γ t1 = ⇒-subst-refl Γ t1
 
   H· : _
-  H· Γ t11 t11' t12 t12' IH1 IH2 Δ t2 t2' p2 γ =
+  H· Γ t11 t11' t12 t12' IH1 IH2 = λ Δ t2 t2' p2 γ →
     papp (IH1 Δ t2 t2' p2 γ) (IH2 Δ t2 t2' p2 γ)
 
   Hƛ : _
@@ -159,17 +155,8 @@ up ts (x ∷ γ) = x ∷ ts γ
   ∀ (p2 : ∀ γ → t2 γ ⇒ t2' γ) →
   ∀ γ → t1 γ (t2 γ) ⇒ t1' γ (t2' γ)
 ⇒-subst-n {Γ} {t1} {t1'} {t2} {t2'} p1 p2 γ =
-  ⇒-subst-gen (suc Γ) Γ (Term.abs t1) (Term.abs t1')
-    (λ γ → t2 γ ∷ γ) (λ γ → t2' γ ∷ γ) (⇒-abs p1) (⇒-subst-lem p2) γ
-
-⇒-subst-1 :
-  ∀ (@♭ t1 t1' : Term → Term) →
-  ∀ (t2 t2' : Term) →
-  ∀ (@♭ p1 : ∀ x → t1 x ⇒ t1' x) →
-  ∀ (p2 : t2 ⇒ t2') →
-  t1 t2 ⇒ t1' t2'
-⇒-subst-1 t1 t1' t2 t2' p1 p2 =
-  ⇒-subst-n {zero} (λ _ → p1) (λ _ → p2) []
+  ⇒-subst-gen (suc Γ) (Term.abs t1) (Term.abs t1') (⇒-abs p1)
+    Γ (λ γ → t2 γ ∷ γ) (λ γ → t2' γ ∷ γ) (⇒-subst-lem p2) γ
 
 Res : Term.Ctx → Set
 Res Γ = (Term.⟦ Γ ⟧ → Term) ⊎ (Term.⟦ Γ ⟧ → Term → Term)
@@ -187,7 +174,7 @@ res-· (inj₂ t1) t2 = inj₁ (λ γ → t1 γ (term-of-res t2 γ))
 
 diag : ∀ {@♭ Γ} (@♭ t : Term.⟦ Γ ⟧ → Term) → Res Γ
 diag {Γ} t =
-  Term-elim (λ Γ _ → Res Γ) HV Hƛ H· Γ t
+  Term-elim _ HV Hƛ H· Γ t
   where
   HV : _
   HV Γ x = inj₁ (λ γ → lookup γ x)
@@ -228,8 +215,8 @@ diag-res-· (inj₂ refl p1) p2 = inj₁ (λ γ → pbeta (p1 γ) (diag-term-of-
          ∀ (@♭ t : Term.⟦ Γ ⟧ → Term) →
          diag-spec t (diag t)
 ⇒-diag {Γ} t =
-  Term-elim (λ Γ t → diag-spec t (diag t))
-    HV Hƛ H· Γ t
+  -- Removing this type annotation causes type checking to diverge
+  Term-elim (λ Γ t → diag-spec t (diag t)) HV Hƛ H· Γ t
   where
 
   HV : _
@@ -248,9 +235,9 @@ diag-β : ∀ {@♭ Γ} {@♭ t1 t1' t2 t2'} →
 diag-β (inj₁ p1) p2 =
   inj₁ (λ γ → ⇒-subst-n (λ γ x → p1 (x ∷ γ)) (diag-term-of-res p2) γ)
 diag-β {Γ} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
-  inj₁ (λ γ → pabs (λ x → ⇒-subst-gen (suc (suc Γ)) (suc Γ)
-                          (Term.abs t1) (Term.abs t1')
-                          σ σ' (abs p1) p (x ∷ γ)))
+  inj₁ (λ γ → pabs (λ x → ⇒-subst-gen (suc (suc Γ))
+                          (Term.abs t1) (Term.abs t1') (abs p1)
+                          (suc Γ) σ σ' p (x ∷ γ)))
   where
   σ : _
   σ γ = head γ ∷ t2 (tail γ) ∷ tail γ
