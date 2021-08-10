@@ -21,14 +21,20 @@ infixl 7 _·_
 
 postulate Term : Set
 
-postulate  _·_ : Term → Term → Term
+module Internal where
 
-postulate ƛ_ : (Term → Term) → Term
+  data Term' : Set where
+    _·_ : Term → Term → Term'
+    ƛ_ : (Term → Term) → Term'
 
-{-# INJECTIVE _·_  #-}
-{-# INJECTIVE ƛ_   #-}
+postulate ⟨_⟩ : Internal.Term' → Term
+{-# INJECTIVE ⟨_⟩ #-}
 
-postulate ƛ-·-disj : ∀ t t₁ t₂ → ƛ t ≢ t₁ · t₂
+_·_ : Term → Term → Term
+t1 · t2 = ⟨ Internal._·_ t1 t2 ⟩
+
+ƛ_ : (Term → Term) → Term
+ƛ_ t = ⟨ Internal.ƛ t ⟩
 
 module Term where
 
