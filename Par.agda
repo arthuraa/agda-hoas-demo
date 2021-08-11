@@ -66,86 +66,53 @@ abs :
   ∀ γ → Term.abs t1 γ ⇒ Term.abs t1' γ
 abs p γ = p (tail γ) (head γ)
 
-up : ∀ {@♭ Γ} {Δ} → (Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) → Term.⟦ suc Δ ⟧ → Term.⟦ suc Γ ⟧
-up ts (x ∷ γ) = x ∷ ts γ
-
-⇒-up : ∀ {@♭ Γ} {Δ} →
-       ∀ {t t' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧} →
-       (∀ γ i → lookup (t γ) i ⇒ lookup (t' γ) i) →
-       ∀ γ i → lookup (up t γ) i ⇒ lookup (up t' γ) i
-⇒-up p (x ∷ γ) zero = prefl x
-⇒-up p (x ∷ γ) (suc i) = p γ i
-
-⇒-subst-refl :
-  ∀ (@♭ Γ) →
-  ∀ (@♭ t1 : Term.⟦ Γ ⟧ → Term) →
-  ∀ (Δ : Term.Ctx) →
-  ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
-  ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
-  ∀ γ → t1 (t2 γ) ⇒ t1 (t2' γ)
-⇒-subst-refl Γ t1 =
-  Term-elim A HV Hƛ H· Γ t1
-  where
-  -- Removing this annotation causes type checking to diverge
-  A : ∀ (@♭ Γ) (@♭ t1 : Term.⟦ Γ ⟧ → Term) → Set
-  A Γ t1 =
-    ∀ Δ →
-    ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
-    ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
-    ∀ γ → t1 (t2 γ) ⇒ t1 (t2' γ)
-
-  HV : _
-  HV Γ x1 = λ Δ t2 t2' p2 γ → p2 γ x1
-
-  Hƛ : _
-  Hƛ Γ t1 IH1 = λ Δ t2 t2' p2 γ →
-    pabs (λ x → IH1 (suc Δ) (up t2) (up t2') (⇒-up p2) (x ∷ γ))
-
-  H· : _
-  H· Γ t1 t1' IH1 IH1' = λ Δ t2 t2' p2 γ →
-    papp (IH1 Δ t2 t2' p2 γ) (IH1' Δ t2 t2' p2 γ)
+⇒-up : ∀ {Γ} {x x' : Term} {γ γ' : Term.⟦ Γ ⟧} →
+       x ⇒ x' →
+       (∀ i → lookup γ i ⇒ lookup γ' i) →
+       ∀ i → lookup (x ∷ γ) i ⇒ lookup (x' ∷ γ') i
+⇒-up px pγ zero = px
+⇒-up px pγ (suc i) = pγ i
 
 ⇒-subst-gen :
   ∀ (@♭ Γ) →
   ∀ (@♭ t1 t1' : Term.⟦ Γ ⟧ → Term) →
-  ∀ (@♭ p1 : ∀ γ   → t1 γ ⇒ t1' γ) →
-  ∀ Δ →
-  ∀ (t2 t2' : Term.⟦ Δ ⟧ → Term.⟦ Γ ⟧) →
-  ∀ (p2 : ∀ γ i → lookup (t2 γ) i ⇒ lookup (t2' γ) i) →
-  ∀ γ → t1 (t2 γ) ⇒ t1' (t2' γ)
+  ∀ (@♭ p1 : ∀ γ  → t1 γ ⇒ t1' γ) →
+  ∀ (γ2 γ2' : Term.⟦ Γ ⟧) →
+  ∀ (p2 : ∀ i → lookup γ2 i ⇒ lookup γ2' i) →
+  t1 γ2 ⇒ t1' γ2'
 ⇒-subst-gen Γ t1 t1' p1 =
-  ⇒-elim _ HR H· Hƛ Hβ Γ t1 t1' p1
+  ⇒-elim A HR H· Hƛ Hβ Γ t1 t1' p1
   where
+  A : _
+  A Γ t1 t1' =
+    ∀ (γ2 γ2' : Term.⟦ Γ ⟧) →
+    ∀ (p2 : ∀ i → lookup γ2 i ⇒ lookup γ2' i) →
+    t1 γ2 ⇒ t1' γ2'
+
   HR : _
-  HR Γ t1 = ⇒-subst-refl Γ t1
+  HR Γ t1 = λ γ2 γ2' p2 →
+    Term-cong2 _⇒_ (λ _ _ IH → pabs (λ x → IH x (prefl x)))
+    (λ _ _ _ _ IH1 IH2 → papp IH1 IH2) t1 γ2 γ2' p2
 
   H· : _
-  H· Γ t11 t11' t12 t12' IH1 IH2 = λ Δ t2 t2' p2 γ →
-    papp (IH1 Δ t2 t2' p2 γ) (IH2 Δ t2 t2' p2 γ)
+  H· Γ t11 t11' t12 t12' IH1 IH2 = λ γ2 γ2' p2 →
+    papp (IH1 γ2 γ2' p2) (IH2 γ2 γ2' p2)
 
   Hƛ : _
-  Hƛ Γ t1 t1' IH Δ t2 t2' p2 γ =
-    pabs (λ x → IH (suc Δ) (up t2) (up t2') (⇒-up p2) (x ∷ γ))
+  Hƛ Γ t1 t1' IH γ2 γ2' p2 =
+    pabs (λ x → IH (x ∷ γ2) (x ∷ γ2') (⇒-up (prefl x) p2))
 
   Hβ : _
-  Hβ Γ t11 t11' t12 t12' IH1 IH2 Δ t2 t2' p2 γ =
-    pbeta (λ x → IH1 (suc Δ) (up t2) (up t2') (⇒-up p2) (x ∷ γ))
-          (IH2 Δ t2 t2' p2 γ)
-
+  Hβ Γ t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
+    pbeta (λ x → IH1 (x ∷ γ2) (x ∷ γ2') (⇒-up (prefl x) p2))
+          (IH2 γ2 γ2' p2)
+{-
 ⇒-abs :
   ∀ {@♭ Γ} →
   ∀ {@♭ t t' : Term.⟦ Γ ⟧ → Term → Term} →
   ∀ (@♭ p : ∀ γ x → t γ x ⇒ t' γ x) →
   ∀ γ → Term.abs t γ ⇒ Term.abs t' γ
 ⇒-abs p (x ∷ γ) = p γ x
-
-⇒-subst-lem :
-  ∀ {@♭ Γ} →
-  ∀ {t t' : Term.⟦ Γ ⟧ → Term} →
-  ∀ (p : ∀ γ → t γ ⇒ t' γ) →
-  ∀ γ i → lookup (t γ ∷ γ) i ⇒ lookup (t' γ ∷ γ) i
-⇒-subst-lem p γ zero = p γ
-⇒-subst-lem p γ (suc i) = prefl (lookup γ i)
 
 ⇒-subst-n :
   ∀ {@♭ Γ} →
@@ -156,7 +123,12 @@ up ts (x ∷ γ) = x ∷ ts γ
   ∀ γ → t1 γ (t2 γ) ⇒ t1' γ (t2' γ)
 ⇒-subst-n {Γ} {t1} {t1'} {t2} {t2'} p1 p2 γ =
   ⇒-subst-gen (suc Γ) (Term.abs t1) (Term.abs t1') (⇒-abs p1)
-    Γ (λ γ → t2 γ ∷ γ) (λ γ → t2' γ ∷ γ) (⇒-subst-lem p2) γ
+    (t2 γ ∷ γ) (t2' γ ∷ γ) p2'
+  where
+  p2' : _
+  p2' zero = p2 γ
+  p2' (suc i) = prefl (lookup γ i)
+-}
 
 Res : Term.Ctx → Set
 Res Γ = (Term.⟦ Γ ⟧ → Term) ⊎ (Term.⟦ Γ ⟧ → Term → Term)
@@ -233,22 +205,15 @@ diag-β : ∀ {@♭ Γ} {@♭ t1 t1' t2 t2'} →
          @♭ diag-spec {Γ} t2 t2' →
          diag-spec (λ γ → t1 (t2 γ ∷ γ)) (res-· (res-ƛ t1') t2')
 diag-β (inj₁ p1) p2 =
-  inj₁ (λ γ → ⇒-subst-n (λ γ x → p1 (x ∷ γ)) (diag-term-of-res p2) γ)
+  inj₁ (λ γ → ⇒-subst-gen _ _ _ p1 (_ ∷ γ) (_ ∷ γ)
+              (⇒-up (diag-term-of-res p2 γ) (λ i → prefl _)))
 diag-β {Γ} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
   inj₁ (λ γ → pabs (λ x → ⇒-subst-gen (suc (suc Γ))
                           (Term.abs t1) (Term.abs t1') (abs p1)
-                          (suc Γ) σ σ' p (x ∷ γ)))
+                          (x ∷ t2 γ ∷ γ) (x ∷ term-of-res t2' γ ∷ γ) (p x γ)))
   where
-  σ : _
-  σ γ = head γ ∷ t2 (tail γ) ∷ tail γ
-
-  σ' : _
-  σ' γ = head γ ∷ term-of-res t2' (tail γ) ∷ tail γ
-
-  p : _
-  p γ zero = prefl _
-  p γ (suc zero) = diag-term-of-res p2 (tail γ)
-  p γ (suc (suc x)) = prefl _
+  p : ∀ x γ i → lookup (x ∷ t2 γ ∷ γ) i ⇒ lookup (x ∷ term-of-res t2' γ ∷ γ) i
+  p x γ = ⇒-up (prefl x) (⇒-up (diag-term-of-res p2 γ) (λ i → prefl _))
 
 triangle : ∀ (@♭ Γ) →
            ∀ (@♭ t t' : Term.⟦ Γ ⟧ → Term) →
