@@ -106,29 +106,6 @@ abs p γ = p (tail γ) (head γ)
   Hβ Γ t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
     pbeta (λ x → IH1 (x ∷ γ2) (x ∷ γ2') (⇒-up (prefl x) p2))
           (IH2 γ2 γ2' p2)
-{-
-⇒-abs :
-  ∀ {@♭ Γ} →
-  ∀ {@♭ t t' : Term.⟦ Γ ⟧ → Term → Term} →
-  ∀ (@♭ p : ∀ γ x → t γ x ⇒ t' γ x) →
-  ∀ γ → Term.abs t γ ⇒ Term.abs t' γ
-⇒-abs p (x ∷ γ) = p γ x
-
-⇒-subst-n :
-  ∀ {@♭ Γ} →
-  ∀ {@♭ t1 t1' : Term.⟦ Γ ⟧ → Term → Term} →
-  ∀ {t2 t2' : Term.⟦ Γ ⟧ → Term} →
-  ∀ (@♭ p1 : ∀ γ x → t1 γ x ⇒ t1' γ x) →
-  ∀ (p2 : ∀ γ → t2 γ ⇒ t2' γ) →
-  ∀ γ → t1 γ (t2 γ) ⇒ t1' γ (t2' γ)
-⇒-subst-n {Γ} {t1} {t1'} {t2} {t2'} p1 p2 γ =
-  ⇒-subst-gen (suc Γ) (Term.abs t1) (Term.abs t1') (⇒-abs p1)
-    (t2 γ ∷ γ) (t2' γ ∷ γ) p2'
-  where
-  p2' : _
-  p2' zero = p2 γ
-  p2' (suc i) = prefl (lookup γ i)
--}
 
 Res : Term.Ctx → Set
 Res Γ = (Term.⟦ Γ ⟧ → Term) ⊎ (Term.⟦ Γ ⟧ → Term → Term)
