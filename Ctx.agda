@@ -29,3 +29,11 @@ data Var : (Γ : Ctx) (T : ⟦ Γ ⟧ → Type) → Set₁ where
 ⟦_⟧ᵥ : {Γ : Ctx} {T : ⟦ Γ ⟧ → Type} → (v : Var Γ T) → (γ : ⟦ Γ ⟧) → ⟦ T γ ⟧ₜ
 ⟦ here Γ T ⟧ᵥ γ = proj₂ γ
 ⟦ next Γ T S v ⟧ᵥ γ = ⟦ v ⟧ᵥ (proj₁ γ)
+
+pb : {Γ Δ : Ctx} (f : ⟦ Γ ⟧ → ⟦ Δ ⟧) → Σ[ Ξ ∈ Ctx ] (⟦ Ξ ⟧ → ⟦ Γ ⟧)
+pb {Γ} {∅} _ = Γ , λ γ → γ
+pb {Γ} {Δ ,, T} f =
+  (proj₁ p ,, (λ ξ → T (proj₁ (f (proj₂ p ξ))))) , λ ξ → proj₂ p (proj₁ ξ)
+  where
+  p : _
+  p = pb (λ γ → proj₁ (f γ))
