@@ -5,50 +5,132 @@ module F where
 open import Agda.Primitive
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
+open import Data.Product
 open import Data.Nat
 open import Data.Fin
-open import Data.Vec
-open import Term
-open import Type
+open import Data.Vec hiding (lookup)
+open import Data.List
+open import Type hiding (⟦_⟧)
 
-postulate _∈_ : Term → Type → Set
+infix 2 `λ_
+infix 2 `Λ
+infixl 1 _·_
+infixl 1 _%_
+
+postulate Term : Type → Set
+
+module QuoteTerm where
+
+  data Term' : Type → Set where
+    `λ_ : {T S : Type} → (Term T → Term S) → Term' (T —→ S)
+    _·_ : {T S : Type} → Term (T —→ S) → Term T → Term' S
+    `Λ : (T : Type → Type) → ((S : Type) → Term (T S)) → Term' (`∀ T)
+    _%_ : {T : Type → Type} → (Term (`∀ T)) → (S : Type) → Term' (T S)
+
+postulate fold-Term : {T : Type} → QuoteTerm.Term' T → Term T
+{-# INJECTIVE fold-Term #-}
+
+`λ_ : {T S : Type} → (Term T → Term S) → Term (T —→ S)
+`λ M = fold-Term (QuoteTerm.`λ M)
+
+_·_ : {T S : Type} → Term (T —→ S) → Term T → Term S
+M · N = fold-Term (QuoteTerm._·_ M N)
+
+`Λ : (T : Type → Type) → ((S : Type) → Term (T S)) → Term (`∀ T)
+`Λ T M = fold-Term (QuoteTerm.`Λ T M)
+
+_%_ : {T : Type → Type} → (Term (`∀ T)) → (S : Type) → Term (T S)
+M % S = fold-Term (QuoteTerm._%_ M S)
+
+⟦_⟧ : List Type → Set
+⟦ Γ ⟧ = ∀ i → Term (lookup Γ i)
+
+abs : {Γ : List Type} → {T S : Type} → (⟦ Γ ⟧ → Term T → Term S) → ⟦ T ∷ Γ ⟧ → Term S
+abs t γ = t (λ i → γ (suc i)) (γ zero)
 
 postulate
-  ∈-Arr-I : ∀ e τ₁ τ₂ → (∀ x → x ∈ τ₁ → e x ∈ τ₂) → TmAbs e ∈ TyArr τ₁ τ₂
+  Term-elim : {l : Level}
+    (A : (@♭ Γ : List Type) → (@♭ T : Type) →
+         (@♭ t : ⟦ Γ ⟧ → Term T) → Set l) →
+    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
+    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Term T → Term S) →
+          A (T ∷ Γ) S (abs t) →
+          A Γ (T —→ S) (λ γ → `λ t γ)) →
+    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Term (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Term T) →
+          A Γ (T —→ S) M → A Γ T N →
+          A Γ S (λ γ → M γ · N γ)) →
+    (HΛ : ∀ (@♭ Γ) (@♭ T : Type → Type) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Term (T S)) →
+          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
+          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
+    (H[] : ∀ (@♭ Γ) (@♭ T : Type → Type) (@♭ M : ⟦ Γ ⟧ → Term (`∀ T)) (@♭ S) →
+           A Γ (`∀ T) M →
+           A Γ (T S) (λ γ → M γ % S)) →
+    ∀ (@♭ Γ) (@♭ T) (@♭ t) → A Γ T t
 
 postulate
-  ∈-Arr-E : ∀ e₁ e₂ τ₁ τ₂ → e₂ ∈ TyArr τ₁ τ₂ → e₁ ∈ τ₁ → TmApp e₂ e₁ ∈ τ₂
+  Term-elim-λ : {l : Level}
+    (A : (@♭ Γ : List Type) → (@♭ T : Type) →
+         (@♭ t : ⟦ Γ ⟧ → Term T) → Set l) →
+    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
+    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Term T → Term S) →
+          A (T ∷ Γ) S (abs t) →
+          A Γ (T —→ S) (λ γ → `λ t γ)) →
+    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Term (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Term T) →
+          A Γ (T —→ S) M → A Γ T N →
+          A Γ S (λ γ → M γ · N γ)) →
+    (HΛ : ∀ (@♭ Γ) (@♭ T : Type → Type) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Term (T S)) →
+          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
+          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
+    (H[] : ∀ (@♭ Γ) (@♭ T : Type → Type) (@♭ M : ⟦ Γ ⟧ → Term (`∀ T)) (@♭ S) →
+           A Γ (`∀ T) M →
+           A Γ (T S) (λ γ → M γ % S)) →
+    ∀ (@♭ Γ) (@♭ T S) (@♭ t) →
+    Term-elim A HV Hλ H· HΛ H[] Γ (T —→ S) (λ γ → `λ t γ) ≡
+    Hλ Γ T S t (Term-elim A HV Hλ H· HΛ H[] (T ∷ Γ) S (abs t))
+
 
 postulate
-  ∈-All-I : ∀ e τ → (∀ σ → e ∈ τ σ) → e ∈ TyAll τ
+  Term-elim-Λ : {l : Level}
+    (A : (@♭ Γ : List Type) → (@♭ T : Type) →
+         (@♭ t : ⟦ Γ ⟧ → Term T) → Set l) →
+    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
+    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Term T → Term S) →
+          A (T ∷ Γ) S (abs t) →
+          A Γ (T —→ S) (λ γ → `λ t γ)) →
+    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Term (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Term T) →
+          A Γ (T —→ S) M → A Γ T N →
+          A Γ S (λ γ → M γ · N γ)) →
+    (HΛ : ∀ (@♭ Γ) (@♭ T : Type → Type) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Term (T S)) →
+          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
+          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
+    (H[] : ∀ (@♭ Γ) (@♭ T : Type → Type) (@♭ M : ⟦ Γ ⟧ → Term (`∀ T)) (@♭ S) →
+           A Γ (`∀ T) M →
+           A Γ (T S) (λ γ → M γ % S)) →
+    ∀ (@♭ Γ) (@♭ T) (@♭ t) →
+    Term-elim A HV Hλ H· HΛ H[] Γ (`∀ T) (λ γ → `Λ T (t γ)) ≡
+    HΛ Γ T t (λ S → Term-elim A HV Hλ H· HΛ H[] Γ (T S) (λ γ → t γ S))
 
 postulate
-  ∈-All-E : ∀ e τ₁ τ₂ → e ∈ TyAll τ₁ → e ∈ τ₁ τ₂
+  Term-elim-[] : {l : Level}
+    (A : (@♭ Γ : List Type) → (@♭ T : Type) →
+         (@♭ t : ⟦ Γ ⟧ → Term T) → Set l) →
+    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
+    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Term T → Term S) →
+          A (T ∷ Γ) S (abs t) →
+          A Γ (T —→ S) (λ γ → `λ t γ)) →
+    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Term (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Term T) →
+          A Γ (T —→ S) M → A Γ T N →
+          A Γ S (λ γ → M γ · N γ)) →
+    (HΛ : ∀ (@♭ Γ) (@♭ T : Type → Type) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Term (T S)) →
+          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
+          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
+    (H[] : ∀ (@♭ Γ) (@♭ T : Type → Type) (@♭ M : ⟦ Γ ⟧ → Term (`∀ T)) (@♭ S) →
+           A Γ (`∀ T) M →
+           A Γ (T S) (λ γ → M γ % S)) →
+    ∀ (@♭ Γ) (@♭ T) (@♭ t) (@♭ S) →
+    Term-elim A HV Hλ H· HΛ H[] Γ (T S) (λ γ → t γ % S) ≡
+    H[] Γ T t S (Term-elim A HV Hλ H· HΛ H[] Γ (`∀ T) (λ γ → t γ))
 
-postulate
-  ∈-Elim : {@♭ l : Level} (@♭ A : ∀ {t} {τ} → t ∈ τ → Set l) →
-           (@♭ H-Arr-I : ∀ e τ₁ τ₂ (d : ∀ x → x ∈ τ₁ → e x ∈ τ₂) →
-                         (∀ x → (d' : x ∈ τ₁) → A d' → A (d _ d')) →
-                         A (∈-Arr-I e _ _ d)) →
-           (@♭ H-Arr-E : ∀ e₁ e₂ τ₁ τ₂ →
-                         ∀ (d₂ : e₂ ∈ TyArr τ₁ τ₂) → A d₂ →
-                         ∀ (d₁ : e₁ ∈ τ₁) → A d₁ →
-                         A (∈-Arr-E e₁ e₂ τ₁ τ₂ d₂ d₁)) →
-           (@♭ H-All-I : ∀ e τ →
-                         ∀ (d : ∀ σ → e ∈ τ σ) → (∀ σ → A (d σ)) →
-                         A (∈-All-I e τ d)) →
-           (@♭ H-All-E : ∀ e τ₁ τ₂ →
-                         ∀ (d : e ∈ TyAll τ₁) → A d →
-                         A (∈-All-E e τ₁ τ₂ d)) →
-           (@♭ t : Term) (@♭ τ : Type) (@♭ d : t ∈ τ) → A d
-
-
-id-tm : Term
-id-tm = TmAbs (λ t → t)
-
-id-ty : Type
-id-ty = TyAll (λ τ → TyArr τ τ)
-
-id-tm-id-ty : id-tm ∈ id-ty
-id-tm-id-ty =
-  ∈-All-I id-tm _ (λ τ → ∈-Arr-I (λ x → x) τ τ (λ x x∈τ → x∈τ))
+{-# REWRITE Term-elim-λ #-}
+{-# REWRITE Term-elim-Λ #-}
+{-# REWRITE Term-elim-[] #-}
