@@ -14,12 +14,15 @@ open import Data.Nat
 open import Data.Fin hiding (_+_; cast)
 open import Data.Vec
 open import Flat
--- open import Ctx
+open import Ctx
 
 infix 6 ƛ_
 infixl 7 _·_
 
-postulate Term : Set
+postulate `Term : Type
+
+Term : Set
+Term = ⟦ `Term ⟧ₜ
 
 module Internal where
 
@@ -36,31 +39,15 @@ t1 · t2 = ⟨ Internal._·_ t1 t2 ⟩
 ƛ_ : (Term → Term) → Term
 ƛ_ t = ⟨ Internal.ƛ t ⟩
 
-module Term where
-
-  Ctx : Set
-  Ctx = ℕ
-
-  ⟦_⟧ : Ctx → Set
-  ⟦ Γ ⟧ = Vec Term Γ
-
-  Var : Ctx → Set
-  Var = Fin
-
-  ⟦_⟧ᵥ : {Γ : Ctx} → Var Γ → ⟦ Γ ⟧ → Term
-  ⟦ x ⟧ᵥ γ = lookup γ x
-
-  abs : {Γ : Ctx} → (⟦ Γ ⟧ → Term → Term) → ⟦ suc Γ ⟧ → Term
-  abs t γ = t (tail γ) (head γ)
-
-open Term
+abs : {Γ : Ctx} → (⟦ Γ ⟧ → Term → Term) → ⟦ Γ ,, (λ _ → `Term) ⟧ → Term
+abs t γ = t (proj₁ γ) (proj₂ γ)
 
 postulate
   Term-elim : {l : Level}
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ v : Var Γ) → A Γ ⟦ v ⟧ᵥ) →
+    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (suc Γ) (abs t) →
+      A (Γ ,, (λ _ → `Term)) (abs t) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
@@ -70,34 +57,34 @@ postulate
 postulate
   Term-elim-V : {l : Level}
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ v : Var Γ) → A Γ ⟦ v ⟧ᵥ) →
+    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (suc Γ) (abs t) →
+      A (Γ ,, (λ _ → `Term)) (abs t) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
-    ∀ (@♭ Γ) (@♭ v : Var Γ) →
-    Term-elim A HV Hƛ H· Γ ⟦ v ⟧ᵥ ≡ HV Γ v
+    ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) →
+    Term-elim A HV Hƛ H· Δ ⟦ v ⟧ᵥ ≡ HV Γ Δ v
 
 postulate
   Term-elim-ƛ : {l : Level}
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ v : Var Γ) → A Γ ⟦ v ⟧ᵥ) →
+    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (suc Γ) (abs t) →
+      A (Γ ,, (λ _ → `Term)) (abs t) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
     ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
     Term-elim A HV Hƛ H· Γ (λ γ → ƛ (t γ)) ≡
-    Hƛ Γ t (Term-elim A HV Hƛ H· (suc Γ) (abs t))
+    Hƛ Γ t (Term-elim A HV Hƛ H· (Γ ,, (λ _ → `Term)) (abs t))
 
 postulate
   Term-elim-· : {l : Level}
     (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ v : Var Γ) → A Γ ⟦ v ⟧ᵥ) →
+    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
     (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (suc Γ) (abs t) →
+      A (Γ ,, (λ _ → `Term)) (abs t) →
       A Γ (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
       A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
@@ -115,25 +102,51 @@ Term-cong1 :
   ∀ (Hƛ : ∀ (t : Term → Term) → (∀ x → A x → A (t x)) → A (ƛ t)) →
   ∀ (H· : ∀ t1 t2 → A t1 → A t2 → A (t1 · t2)) →
   ∀ {@♭ Γ} (@♭ t : ⟦ Γ ⟧ → Term) →
-  ∀ γ → (∀ i → A (lookup γ i)) → A (t γ)
+  ∀ γ → (∀ Δ (v : Var Δ _ Γ) → A (⟦ v ⟧ᵥ γ)) → A (t γ)
 Term-cong1 {l} A Hƛ H· t = Term-elim A' HV' Hƛ' H·' _ t
   where
   A' : ∀ (@♭ Γ) (@♭ A : ⟦ Γ ⟧ → Term) → Set l
-  A' Γ t = ∀ γ → (∀ i → A (lookup γ i)) → A (t γ)
+  A' Γ t = ∀ γ → (∀ Δ (v : Var Δ _ Γ) → A (⟦ v ⟧ᵥ γ)) → A (t γ)
 
   HV' : _
-  HV' Γ x γ A-γ = A-γ x
+  HV' Γ Δ x γ A-γ = A-γ Γ x
 
   Hƛ' : _
-  Hƛ' Γ t IH γ A-γ = Hƛ (t γ) (λ x A-x → IH (x ∷ γ) (A-x' x A-x))
+  Hƛ' Γ t IH γ A-γ = Hƛ (t γ) (λ x A-x → IH (γ , x) (A-γ' x A-x))
     where
-    A-x' : ∀ x → A x → ∀ i → A (lookup (x ∷ γ) i)
-    A-x' x A-x zero = A-x
-    A-x' x A-x (suc i) = A-γ i
+    A-γ' : ∀ x → A x → ∀ Δ (v : Var Δ _ (Γ ,, (λ _ → `Term))) → A (⟦ v ⟧ᵥ (γ , x))
+    A-γ' x A-x .Γ zero = A-x
+    A-γ' x A-x Δ (suc v) = A-γ Δ v
 
   H·' : _
   H·' Γ t1 t2 IH1 IH2 γ A-γ = H· _ _ (IH1 γ A-γ) (IH2 γ A-γ)
 
+Term-cong1 :
+  ∀ {l  : Level} →
+  ∀ (A  : Term → Set l) →
+  ∀ (Hƛ : ∀ (t : Term → Term) → (∀ x → A x → A (t x)) → A (ƛ t)) →
+  ∀ (H· : ∀ t1 t2 → A t1 → A t2 → A (t1 · t2)) →
+  ∀ {@♭ Γ} (@♭ t : ⟦ Γ ⟧ → Term) →
+  ∀ γ → (∀ Δ (v : Var Δ _ Γ) → A (⟦ v ⟧ᵥ γ)) → A (t γ)
+Term-cong1 {l} A Hƛ H· t = Term-elim A' HV' Hƛ' H·' _ t
+  where
+  A' : ∀ (@♭ Γ) (@♭ A : ⟦ Γ ⟧ → Term) → Set l
+  A' Γ t = ∀ γ → (∀ Δ (v : Var Δ _ Γ) → A (⟦ v ⟧ᵥ γ)) → A (t γ)
+
+  HV' : _
+  HV' Γ Δ x γ A-γ = A-γ Γ x
+
+  Hƛ' : _
+  Hƛ' Γ t IH γ A-γ = Hƛ (t γ) (λ x A-x → IH (γ , x) (A-γ' x A-x))
+    where
+    A-γ' : ∀ x → A x → ∀ Δ (v : Var Δ _ (Γ ,, (λ _ → `Term))) → A (⟦ v ⟧ᵥ (γ , x))
+    A-γ' x A-x .Γ zero = A-x
+    A-γ' x A-x Δ (suc v) = A-γ Δ v
+
+  H·' : _
+  H·' Γ t1 t2 IH1 IH2 γ A-γ = H· _ _ (IH1 γ A-γ) (IH2 γ A-γ)
+
+{-
 Term-cong2 :
   ∀ {l  : Level} →
   ∀ (A  : Term → Term → Set l) →
@@ -163,3 +176,4 @@ Term-cong2 {l} A Hƛ H· t = Term-elim A' HV' Hƛ' H·' _ t
   H·' : _
   H·' Γ t1 t2 IH1 IH2 γ1 γ2 A-γ =
     H· _ _ _ _ (IH1 γ1 γ2 A-γ) (IH2 γ1 γ2 A-γ)
+-}

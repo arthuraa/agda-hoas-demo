@@ -9,26 +9,27 @@ infixl 2 _,,_
 
 mutual
 
-  data Ctx : Set₁ where
+  data Ctx : Set where
     ∅ : Ctx
     _,,_  : (Γ : Ctx) → (⟦ Γ ⟧ → Type) → Ctx
 
-  postulate Type : Set₁
+  postulate Type : Set
   ⟦_⟧  : Ctx → Set
-  postulate ⟦_⟧ₜ : Type → Set₀
+  postulate ⟦_⟧ₜ : Type → Set
 
   ⟦ ∅ ⟧ = ⊤
   ⟦ Γ ,, T ⟧ = Σ[ γ ∈ ⟦ Γ ⟧ ] ⟦ T γ ⟧ₜ
 
-data Var : (Γ : Ctx) (T : ⟦ Γ ⟧ → Type) → Set₁ where
-  here : (Γ : Ctx) → (T : ⟦ Γ ⟧ → Type)  →
-         Var (Γ ,, T) (λ γ → T (proj₁ γ))
-  next : (Γ : Ctx) → (T S : ⟦ Γ ⟧ → Type) → Var Γ S →
-         Var (Γ ,, T) (λ γ → S (proj₁ γ))
+data Var (Γ : Ctx) (T : ⟦ Γ ⟧ → Type) : Ctx → Set where
+  zero : Var Γ T (Γ ,, T)
+  suc  : ∀ {Δ S} → Var Γ T Δ → Var Γ T (Δ ,, S)
 
-⟦_⟧ᵥ : {Γ : Ctx} {T : ⟦ Γ ⟧ → Type} → (v : Var Γ T) → (γ : ⟦ Γ ⟧) → ⟦ T γ ⟧ₜ
-⟦ here Γ T ⟧ᵥ γ = proj₂ γ
-⟦ next Γ T S v ⟧ᵥ γ = ⟦ v ⟧ᵥ (proj₁ γ)
+π : ∀ {Γ} {T} {Δ} → Var Γ T Δ → ⟦ Δ ⟧ → ⟦ Γ ,, T ⟧
+π zero    γ = γ
+π (suc i) γ = π i (proj₁ γ)
+
+⟦_⟧ᵥ : ∀ {Γ} {T} {Δ} → (v : Var Γ T Δ) → (δ : ⟦ Δ ⟧) → ⟦ T (proj₁ (π v δ)) ⟧ₜ
+⟦ v ⟧ᵥ δ = proj₂ (π v δ)
 
 pb : {Γ Δ : Ctx} (f : ⟦ Γ ⟧ → ⟦ Δ ⟧) → Σ[ Ξ ∈ Ctx ] (⟦ Ξ ⟧ → ⟦ Γ ⟧)
 pb {Γ} {∅} _ = Γ , λ γ → γ
