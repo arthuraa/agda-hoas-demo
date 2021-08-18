@@ -8,12 +8,8 @@ open import Agda.Builtin.Equality.Rewrite
 open import Relation.Binary.PropositionalEquality
 open import Data.Empty
 open import Data.Unit
-open import Data.Product hiding (∃; ∃!)
 open import Data.Sum
 open import Data.Nat
-open import Data.Fin hiding (_+_; cast)
-open import Data.Vec
-open import Flat
 open import Ctx
 
 infix 6 ƛ_
@@ -55,41 +51,23 @@ postulate
 
 
 postulate
-  Term-elim-V : {l : Level}
-    (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
-    (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (Γ ,, (λ _ → `Term)) (abs t) →
-      A Γ (λ γ → ƛ (t γ))) →
-    (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
-      A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
+  Term-elim-V :
+    ∀ {l : Level} A HV Hƛ H· →
     ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) →
-    Term-elim A HV Hƛ H· Δ ⟦ v ⟧ᵥ ≡ HV Γ Δ v
+    Term-elim {l} A HV Hƛ H· Δ ⟦ v ⟧ᵥ ≡ HV Γ Δ v
 
 postulate
-  Term-elim-ƛ : {l : Level}
-    (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
-    (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (Γ ,, (λ _ → `Term)) (abs t) →
-      A Γ (λ γ → ƛ (t γ))) →
-    (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
-      A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
+  Term-elim-ƛ :
+    ∀ {l : Level} A HV Hƛ H· →
     ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-    Term-elim A HV Hƛ H· Γ (λ γ → ƛ (t γ)) ≡
+    Term-elim {l} A HV Hƛ H· Γ (λ γ → ƛ (t γ)) ≡
     Hƛ Γ t (Term-elim A HV Hƛ H· (Γ ,, (λ _ → `Term)) (abs t))
 
 postulate
-  Term-elim-· : {l : Level}
-    (A : ∀ (@♭ Γ) → @♭ (⟦ Γ ⟧ → Term) → Set l) →
-    (HV : ∀ (@♭ Γ Δ) (@♭ v : Var Γ (λ _ → `Term) Δ) → A Δ ⟦ v ⟧ᵥ) →
-    (Hƛ : ∀ (@♭ Γ) (@♭ t : ⟦ Γ ⟧ → Term → Term) →
-      A (Γ ,, (λ _ → `Term)) (abs t) →
-      A Γ (λ γ → ƛ (t γ))) →
-    (H· : ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
-      A Γ t1 → A Γ t2 → A Γ (λ γ → t1 γ · t2 γ)) →
+  Term-elim-· :
+    ∀ {l : Level} A HV Hƛ H· →
     ∀ (@♭ Γ) (@♭ t1 t2 : ⟦ Γ ⟧ → Term) →
-    Term-elim A HV Hƛ H· Γ (λ γ → t1 γ · t2 γ) ≡
+    Term-elim {l} A HV Hƛ H· Γ (λ γ → t1 γ · t2 γ) ≡
     H· Γ t1 t2 (Term-elim A HV Hƛ H· Γ t1) (Term-elim A HV Hƛ H· Γ t2)
 
 {-# REWRITE Term-elim-V #-}
