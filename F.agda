@@ -10,14 +10,18 @@ open import Data.Nat
 open import Data.Fin
 open import Data.Vec hiding (lookup)
 open import Data.List
-open import Ty hiding (⟦_⟧)
+open import Ctx
+open import Ty
 
 infix 2 `λ_
 infix 2 `Λ
 infixl 1 _·_
 infixl 1 _%_
 
-postulate Tm : Ty → Set
+postulate `Tm : Ty → Type
+
+Tm : Ty → Set
+Tm τ = ⟦ `Tm τ ⟧ₜ
 
 module QuoteTm where
 
@@ -42,95 +46,75 @@ M · N = fold-Tm (QuoteTm._·_ M N)
 _%_ : {T : Ty → Ty} → (Tm (`∀ T)) → (S : Ty) → Tm (T S)
 M % S = fold-Tm (QuoteTm._%_ M S)
 
-⟦_⟧ : List Ty → Set
-⟦ Γ ⟧ = ∀ i → Tm (lookup Γ i)
-
-abs : {Γ : List Ty} → {T S : Ty} → (⟦ Γ ⟧ → Tm T → Tm S) → ⟦ T ∷ Γ ⟧ → Tm S
-abs t γ = t (λ i → γ (suc i)) (γ zero)
+abs : {Γ : Ctx} → {T S : ⟦ Γ ⟧ → Ty} →
+  ((γ : ⟦ Γ ⟧) → Tm (T γ) → Tm (S γ)) →
+  (γ : ⟦ Γ ,, (λ γ → `Tm (T γ)) ⟧) → Tm (S (π₁ γ))
+abs t γ = t (π₁ γ) (π₂ γ)
 
 postulate
   Tm-elim : {l : Level}
-    (A : (@♭ Γ : List Ty) → (@♭ T : Ty) →
-         (@♭ t : ⟦ Γ ⟧ → Tm T) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
-    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Tm T → Tm S) →
-          A (T ∷ Γ) S (abs t) →
-          A Γ (T —→ S) (λ γ → `λ t γ)) →
-    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Tm (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Tm T) →
-          A Γ (T —→ S) M → A Γ T N →
-          A Γ S (λ γ → M γ · N γ)) →
-    (HΛ : ∀ (@♭ Γ) (@♭ T : Ty → Ty) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Tm (T S)) →
-          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
-          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
-    (H[] : ∀ (@♭ Γ) (@♭ T : Ty → Ty) (@♭ M : ⟦ Γ ⟧ → Tm (`∀ T)) (@♭ S) →
-           A Γ (`∀ T) M →
-           A Γ (T S) (λ γ → M γ % S)) →
-    ∀ (@♭ Γ) (@♭ T) (@♭ t) → A Γ T t
+    (A : (@♭ Γ : Ctx) → (@♭ T : ⟦ Γ ⟧ → Ty) →
+         (@♭ t : (γ : ⟦ Γ ⟧) → Tm (T γ)) → Set l) →
+    (HV : ∀ (@♭ Γ Δ) (@♭ T : ⟦ Δ ⟧ → Ty)
+          (@♭ v : Var Δ (λ δ → `Tm (T δ)) Γ) →
+          A Γ _ ⟦ v ⟧ᵥ) →
+    (Hλ : ∀ (@♭ Γ) (@♭ T S : ⟦ Γ ⟧ → Ty)
+          (@♭ M : (γ : ⟦ Γ ⟧) → Tm (T γ) → Tm (S γ)) →
+          A _ _ (abs M) →
+          A Γ (λ γ → T γ —→ S γ) (λ γ → `λ M γ)) →
+    (H· : ∀ (@♭ Γ) (@♭ T S : ⟦ Γ ⟧ → Ty)
+          (@♭ M : (γ : ⟦ Γ ⟧) → Tm (T γ —→ S γ))
+          (@♭ N : (γ : ⟦ Γ ⟧) → Tm (T γ)) →
+          A _ _ M → A _ _ N →
+          A _ _ (λ γ → M γ · N γ)) →
+    (HΛ : ∀ (@♭ Γ) (@♭ T : ⟦ Γ ⟧ → Ty → Ty) →
+          (@♭ M : (γ : ⟦ Γ ⟧) → ∀ S → Tm (T γ S)) →
+          A _ _ (λ γ → M (π₁ γ) (π₂ γ)) →
+          A _ _ (λ γ → `Λ (T γ) (M γ))) →
+    (H[] : ∀ (@♭ Γ) (@♭ T : ⟦ Γ ⟧ → Ty → Ty)
+           (@♭ M : (γ : ⟦ Γ ⟧) → Tm (`∀ T γ)) (@♭ S : ⟦ Γ ⟧ → Ty) →
+           A _ _ M →
+           A _ _ (λ γ → M γ % S γ)) →
+    ∀ (@♭ Γ) (@♭ T) (@♭ M) → A Γ T M
 
 postulate
-  Tm-elim-λ : {l : Level}
-    (A : (@♭ Γ : List Ty) → (@♭ T : Ty) →
-         (@♭ t : ⟦ Γ ⟧ → Tm T) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
-    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Tm T → Tm S) →
-          A (T ∷ Γ) S (abs t) →
-          A Γ (T —→ S) (λ γ → `λ t γ)) →
-    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Tm (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Tm T) →
-          A Γ (T —→ S) M → A Γ T N →
-          A Γ S (λ γ → M γ · N γ)) →
-    (HΛ : ∀ (@♭ Γ) (@♭ T : Ty → Ty) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Tm (T S)) →
-          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
-          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
-    (H[] : ∀ (@♭ Γ) (@♭ T : Ty → Ty) (@♭ M : ⟦ Γ ⟧ → Tm (`∀ T)) (@♭ S) →
-           A Γ (`∀ T) M →
-           A Γ (T S) (λ γ → M γ % S)) →
-    ∀ (@♭ Γ) (@♭ T S) (@♭ t) →
-    Tm-elim A HV Hλ H· HΛ H[] Γ (T —→ S) (λ γ → `λ t γ) ≡
-    Hλ Γ T S t (Tm-elim A HV Hλ H· HΛ H[] (T ∷ Γ) S (abs t))
+  Tm-elim-V :
+    ∀ {l : Level} A HV Hλ H· HΛ H[] →
+    ∀ (@♭ Γ Δ) (@♭ T : ⟦ Δ ⟧ → Ty) (@♭ v : Var Δ (λ δ → `Tm (T δ)) Γ) →
+    Tm-elim {l} A HV Hλ H· HΛ H[] Γ _ ⟦ v ⟧ᵥ ≡ HV Γ Δ T v
+
+postulate
+  Tm-elim-λ :
+    ∀ {l : Level} A HV Hλ H· HΛ H[] →
+    ∀ (@♭ Γ T S M) →
+    Tm-elim {l} A HV Hλ H· HΛ H[] Γ _ (λ γ → `λ M γ) ≡
+    Hλ Γ T S M (Tm-elim A HV Hλ H· HΛ H[] _ _ (abs M))
+
+postulate
+  Tm-elim-· :
+    ∀ {l : Level} A HV Hλ H· HΛ H[] →
+    ∀ (@♭ Γ T S M N) →
+    Tm-elim {l} A HV Hλ H· HΛ H[] Γ _ (λ γ → M γ · N γ) ≡
+    H· Γ T S M N (Tm-elim A HV Hλ H· HΛ H[] Γ _ M) (Tm-elim A HV Hλ H· HΛ H[] Γ _ N)
 
 
 postulate
-  Tm-elim-Λ : {l : Level}
-    (A : (@♭ Γ : List Ty) → (@♭ T : Ty) →
-         (@♭ t : ⟦ Γ ⟧ → Tm T) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
-    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Tm T → Tm S) →
-          A (T ∷ Γ) S (abs t) →
-          A Γ (T —→ S) (λ γ → `λ t γ)) →
-    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Tm (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Tm T) →
-          A Γ (T —→ S) M → A Γ T N →
-          A Γ S (λ γ → M γ · N γ)) →
-    (HΛ : ∀ (@♭ Γ) (@♭ T : Ty → Ty) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Tm (T S)) →
-          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
-          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
-    (H[] : ∀ (@♭ Γ) (@♭ T : Ty → Ty) (@♭ M : ⟦ Γ ⟧ → Tm (`∀ T)) (@♭ S) →
-           A Γ (`∀ T) M →
-           A Γ (T S) (λ γ → M γ % S)) →
-    ∀ (@♭ Γ) (@♭ T) (@♭ t) →
-    Tm-elim A HV Hλ H· HΛ H[] Γ (`∀ T) (λ γ → `Λ T (t γ)) ≡
-    HΛ Γ T t (λ S → Tm-elim A HV Hλ H· HΛ H[] Γ (T S) (λ γ → t γ S))
+  Tm-elim-Λ :
+    ∀ {l : Level} A HV Hλ H· HΛ H[] →
+    ∀ (@♭ Γ) (@♭ T) (@♭ M) →
+    Tm-elim {l} A HV Hλ H· HΛ H[] Γ (λ γ → `∀ T γ) (λ γ → `Λ (T γ) (M γ)) ≡
+    HΛ Γ T M (Tm-elim A HV Hλ H· HΛ H[] (Γ ,, λ _ → `Ty) _ (λ γ → M (π₁ γ) (π₂ γ)))
 
 postulate
-  Tm-elim-[] : {l : Level}
-    (A : (@♭ Γ : List Ty) → (@♭ T : Ty) →
-         (@♭ t : ⟦ Γ ⟧ → Tm T) → Set l) →
-    (HV : ∀ (@♭ Γ) (@♭ i) → A Γ (lookup Γ i) (λ γ → γ i)) →
-    (Hλ : ∀ (@♭ Γ) (@♭ T S) (@♭ t : ⟦ Γ ⟧ → Tm T → Tm S) →
-          A (T ∷ Γ) S (abs t) →
-          A Γ (T —→ S) (λ γ → `λ t γ)) →
-    (H· : ∀ (@♭ Γ) (@♭ T S) (@♭ M : ⟦ Γ ⟧ → Tm (T —→ S)) (@♭ N : ⟦ Γ ⟧ → Tm T) →
-          A Γ (T —→ S) M → A Γ T N →
-          A Γ S (λ γ → M γ · N γ)) →
-    (HΛ : ∀ (@♭ Γ) (@♭ T : Ty → Ty) → (@♭ M : ⟦ Γ ⟧ → ∀ S → Tm (T S)) →
-          (∀ (@♭ S) → A Γ (T S) (λ γ → M γ S)) →
-          A Γ (`∀ T) (λ γ → `Λ T (M γ))) →
-    (H[] : ∀ (@♭ Γ) (@♭ T : Ty → Ty) (@♭ M : ⟦ Γ ⟧ → Tm (`∀ T)) (@♭ S) →
-           A Γ (`∀ T) M →
-           A Γ (T S) (λ γ → M γ % S)) →
-    ∀ (@♭ Γ) (@♭ T) (@♭ t) (@♭ S) →
-    Tm-elim A HV Hλ H· HΛ H[] Γ (T S) (λ γ → t γ % S) ≡
-    H[] Γ T t S (Tm-elim A HV Hλ H· HΛ H[] Γ (`∀ T) (λ γ → t γ))
+  Tm-elim-[] :
+    ∀ {l : Level} A HV Hλ H· HΛ H[] →
+    ∀ (@♭ Γ) (@♭ T) (@♭ M) (@♭ S) →
+    Tm-elim {l} A HV Hλ H· HΛ H[] Γ _ (λ γ → M γ % S γ) ≡
+    H[] Γ T M S (Tm-elim A HV Hλ H· HΛ H[] Γ _ M)
 
+
+{-# REWRITE Tm-elim-V #-}
 {-# REWRITE Tm-elim-λ #-}
+{-# REWRITE Tm-elim-· #-}
 {-# REWRITE Tm-elim-Λ #-}
 {-# REWRITE Tm-elim-[] #-}
