@@ -43,7 +43,7 @@ M · N = fold-Tm (QuoteTm._·_ M N)
 `Λ : (T : Ty → Ty) → ((S : Ty) → Tm (T S)) → Tm (`∀ T)
 `Λ T M = fold-Tm (QuoteTm.`Λ T M)
 
-_%_ : {T : Ty → Ty} → (Tm (`∀ T)) → (S : Ty) → Tm (T S)
+_%_ : {T : Ty → Ty} → Tm (`∀ T) → (S : Ty) → Tm (T S)
 M % S = fold-Tm (QuoteTm._%_ M S)
 
 abs : {Γ : Ctx} → {T S : ⟦ Γ ⟧ → Ty} →
@@ -59,20 +59,20 @@ postulate
           (@♭ v : Var Δ (λ δ → `Tm (T δ)) Γ) →
           A Γ _ ⟦ v ⟧ᵥ) →
     (Hλ : ∀ (@♭ Γ) (@♭ T S : ⟦ Γ ⟧ → Ty)
-          (@♭ M : (γ : ⟦ Γ ⟧) → Tm (T γ) → Tm (S γ)) →
+          (@♭ M : ∀ γ → Tm (T γ) → Tm (S γ)) →
           A _ _ (abs M) →
           A Γ (λ γ → T γ —→ S γ) (λ γ → `λ M γ)) →
     (H· : ∀ (@♭ Γ) (@♭ T S : ⟦ Γ ⟧ → Ty)
-          (@♭ M : (γ : ⟦ Γ ⟧) → Tm (T γ —→ S γ))
-          (@♭ N : (γ : ⟦ Γ ⟧) → Tm (T γ)) →
+          (@♭ M : ∀ γ → Tm (T γ —→ S γ))
+          (@♭ N : ∀ γ → Tm (T γ)) →
           A _ _ M → A _ _ N →
           A _ _ (λ γ → M γ · N γ)) →
     (HΛ : ∀ (@♭ Γ) (@♭ T : ⟦ Γ ⟧ → Ty → Ty) →
-          (@♭ M : (γ : ⟦ Γ ⟧) → ∀ S → Tm (T γ S)) →
+          (@♭ M : ∀ γ S → Tm (T γ S)) →
           A _ _ (λ γ → M (π₁ γ) (π₂ γ)) →
           A _ _ (λ γ → `Λ (T γ) (M γ))) →
     (H[] : ∀ (@♭ Γ) (@♭ T : ⟦ Γ ⟧ → Ty → Ty)
-           (@♭ M : (γ : ⟦ Γ ⟧) → Tm (`∀ T γ)) (@♭ S : ⟦ Γ ⟧ → Ty) →
+           (@♭ M : ∀ γ → Tm (`∀ T γ)) (@♭ S : ⟦ Γ ⟧ → Ty) →
            A _ _ M →
            A _ _ (λ γ → M γ % S γ)) →
     ∀ (@♭ Γ) (@♭ T) (@♭ M) → A Γ T M
