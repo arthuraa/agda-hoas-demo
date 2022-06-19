@@ -13,9 +13,8 @@ open import Data.Sum
 open import Data.Nat
 open import Data.Fin hiding (_+_; cast)
 open import Data.Vec
-open import Term
-open import Ctx
 open import Flat
+open import Lambda
 
 infix 3 _⇒_
 
@@ -50,12 +49,12 @@ postulate
             A Γ (λ γ → t1 γ · t2 γ) (λ γ → t1' γ · t2' γ)) →
     ∀ (Hƛ : ∀ (@♭ Γ) →
             ∀ (@♭ t t' : ⟦ Γ ⟧ → Term → Term) →
-            A (Γ ,, λ _ → `Term) (abs t) (abs t') →
+            A (suc Γ) (abs t) (abs t') →
             A Γ (λ γ → ƛ t γ) (λ γ → ƛ t' γ)) →
     ∀ (Hβ : ∀ (@♭ Γ) →
             ∀ (@♭ t1 t1' : ⟦ Γ ⟧ → Term → Term) →
             ∀ (@♭ t2 t2') →
-            A (Γ ,, λ _ → `Term) (abs t1) (abs t1') →
+            A (suc Γ) (abs t1) (abs t1') →
             A Γ t2 t2' →
             A Γ (λ γ → (ƛ t1 γ) · t2 γ) (λ γ → t1' γ (t2' γ))) →
     ∀ (@♭ Γ t1 t2) →
@@ -65,22 +64,22 @@ par-abs :
   ∀ {@♭ Γ} {@♭ t1 t1' : ⟦ Γ ⟧ → Term → Term} →
   (p : ∀ γ x → t1 γ x ⇒ t1' γ x) →
   ∀ γ → abs t1 γ ⇒ abs t1' γ
-par-abs p γ = p (π₁ γ) (π₂ γ)
+par-abs p γ = p (tail γ) (head γ)
 
 _⊢_⇒ₛ_ : ∀ Γ (γ γ' : ⟦ Γ ⟧) → Set
-_⊢_⇒ₛ_ Γ γ γ' = ∀ Δ (v : Var Δ (λ _ → `Term) Γ) → ⟦ v ⟧ᵥ γ ⇒ ⟦ v ⟧ᵥ γ'
+_⊢_⇒ₛ_ Γ γ γ' = ∀ (v : Var Γ) → ⟦ v ⟧ᵥ γ ⇒ ⟦ v ⟧ᵥ γ'
 
 infixl 2 _,,ₛ_
 
 _,,ₛ_ : ∀ {Γ} {γ γ' : ⟦ Γ ⟧} {x x' : Term} →
         Γ ⊢ γ ⇒ₛ γ' →
         x ⇒  x' →
-        (Γ ,, λ _ → `Term) ⊢ (γ ,, x) ⇒ₛ (γ' ,, x')
-_,,ₛ_ {.Δ} ⇒-γ ⇒-x Δ zero = ⇒-x
-_,,ₛ_ {Γ} ⇒-γ ⇒-x Δ (suc v) = ⇒-γ _ v
+        (suc Γ) ⊢ (x ∷ γ) ⇒ₛ (x' ∷ γ')
+_,,ₛ_ {Γ} ⇒-γ ⇒-x zero = ⇒-x
+_,,ₛ_ {Γ} ⇒-γ ⇒-x (suc v) = ⇒-γ v
 
 preflₛ : ∀ {Γ} {γ : ⟦ Γ ⟧} → Γ ⊢ γ ⇒ₛ γ
-preflₛ Δ v = prefl _
+preflₛ v = prefl _
 
 ⇒-subst :
   ∀ (@♭ Γ) →
@@ -106,11 +105,11 @@ preflₛ Δ v = prefl _
 
   Hƛ : _
   Hƛ Γ t1 t1' IH γ2 γ2' p2 =
-    pabs (λ x → IH (γ2 ,, x) (γ2' ,, x) (p2 ,,ₛ prefl x))
+    pabs (λ x → IH (x ∷ γ2) (x ∷ γ2') (p2 ,,ₛ prefl x))
 
   Hβ : _
   Hβ Γ t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
-    pbeta (λ x → IH1 (γ2 ,, x) (γ2' ,, x) (p2 ,,ₛ prefl x))
+    pbeta (λ x → IH1 (x ∷ γ2) (x ∷ γ2') (p2 ,,ₛ prefl x))
           (IH2 γ2 γ2' p2)
 
 Res : Ctx → Set
@@ -120,8 +119,8 @@ term-of-res : ∀ {Γ} → Res Γ → ⟦ Γ ⟧ → Term
 term-of-res (inj₁ t) = t
 term-of-res (inj₂ t) γ = ƛ (t γ)
 
-res-ƛ : ∀ {Γ} → Res (Γ ,, λ _ → `Term) → Res Γ
-res-ƛ t = inj₂ (λ γ x → term-of-res t (γ ,, x))
+res-ƛ : ∀ {Γ} → Res (suc Γ) → Res Γ
+res-ƛ t = inj₂ (λ γ x → term-of-res t (x ∷ γ))
 
 res-· : ∀ {Γ} → Res Γ → Res Γ → Res Γ
 res-· (inj₁ t1) t2 = inj₁ (λ γ → t1 γ · term-of-res t2 γ)
@@ -132,7 +131,7 @@ diag {Γ} t =
   Term-elim _ HV Hƛ H· Γ t
   where
   HV : _
-  HV Γ Δ x = inj₁ (λ γ → ⟦ x ⟧ᵥ γ)
+  HV Γ x = inj₁ (λ γ → ⟦ x ⟧ᵥ γ)
 
   Hƛ : _
   Hƛ Γ _ IH = res-ƛ IH
@@ -154,9 +153,9 @@ diag-term-of-res (inj₁ p) γ = p γ
 diag-term-of-res (inj₂ refl p) γ = pabs (p γ)
 
 diag-res-ƛ : ∀ {Γ t t'} →
-             diag-spec {Γ ,, λ _ → `Term} t t' →
-             diag-spec {Γ} (λ γ → ƛ (λ x → t (γ ,, x))) (res-ƛ t')
-diag-res-ƛ p = inj₂ refl (λ γ x → diag-term-of-res p (γ ,, x))
+             diag-spec {suc Γ} t t' →
+             diag-spec {Γ} (λ γ → ƛ (λ x → t (x ∷ γ))) (res-ƛ t')
+diag-res-ƛ p = inj₂ refl (λ γ x → diag-term-of-res p (x ∷ γ))
 
 diag-res-· : ∀ {Γ t1 t1' t2 t2'} →
              diag-spec {Γ} t1 t1' →
@@ -175,7 +174,7 @@ diag-res-· (inj₂ refl p1) p2 = inj₁ (λ γ → pbeta (p1 γ) (diag-term-of-
   where
 
   HV : _
-  HV Γ Δ v = inj₁ (λ γ → prefl (⟦ v ⟧ᵥ γ))
+  HV Γ v = inj₁ (λ γ → prefl (⟦ v ⟧ᵥ γ))
 
   Hƛ : _
   Hƛ Γ t IH = diag-res-ƛ IH
@@ -184,19 +183,19 @@ diag-res-· (inj₂ refl p1) p2 = inj₁ (λ γ → pbeta (p1 γ) (diag-term-of-
   H· Γ t1 t2 IH1 IH2 = diag-res-· IH1 IH2
 
 diag-β : ∀ {@♭ Γ} {@♭ t1 t1' t2 t2'} →
-         @♭ diag-spec {Γ ,, λ _ → `Term} t1 t1' →
+         @♭ diag-spec {suc Γ} t1 t1' →
          @♭ diag-spec {Γ} t2 t2' →
-         diag-spec (λ γ → t1 (γ ,, t2 γ)) (res-· (res-ƛ t1') t2')
+         diag-spec (λ γ → t1 (t2 γ ∷ γ)) (res-· (res-ƛ t1') t2')
 diag-β (inj₁ p1) p2 =
-  inj₁ (λ γ → ⇒-subst _ _ _ p1 (γ ,, _) (γ ,, _)
-              (preflₛ ,,ₛ diag-term-of-res p2 γ))
+  inj₁ (λ γ → ⇒-subst _ _ _ p1 (_ ∷ γ) (_ ∷ γ)
+              (preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ))
 diag-β {Γ} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
-  inj₁ (λ γ → pabs (λ x → ⇒-subst (Γ ,, (λ _ → `Term) ,, (λ _ → `Term))
+  inj₁ (λ γ → pabs (λ x → ⇒-subst (suc (suc Γ))
                           (abs t1) (abs t1') (par-abs p1)
-                          (γ ,, t2 γ ,, x) (γ ,, term-of-res t2' γ ,, x) (p x γ)))
+                          (x ∷ t2 γ ∷ γ) (x ∷ term-of-res t2' γ ∷ γ) (p x γ)))
   where
-  p : ∀ x γ → _ ⊢ (γ ,, t2 γ ,, x) ⇒ₛ (γ ,, term-of-res t2' γ ,, x)
-  p x γ = preflₛ ,,ₛ diag-term-of-res p2 γ ,,ₛ prefl x
+  p : ∀ x γ → _ ⊢ (x ∷ t2 γ ∷ γ) ⇒ₛ (x ∷ term-of-res t2' γ ∷ γ)
+  p x γ = preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ ,,ₛ prefl x
 
 triangle : ∀ (@♭ Γ) →
            ∀ (@♭ t t' : ⟦ Γ ⟧ → Term) →
