@@ -18,7 +18,7 @@ open import Lambda
 
 infix 3 _⇒_
 
-postulate _⇒_ : Term → Term → Set
+postulate _⇒_ : Λ → Λ → Set
 
 postulate
   prefl : ∀ t → t ⇒ t
@@ -31,28 +31,28 @@ postulate
 
 postulate
   pabs : ∀ {t t'} →
-    (∀ (x : Term) → t x ⇒ t' x) →
+    (∀ (x : Λ) → t x ⇒ t' x) →
     ƛ t ⇒ ƛ t'
 
 postulate
-  pbeta : ∀ {t1 t1' : Term → Term} {t2 t2'} →
-    (∀ (x : Term) → t1 x ⇒ t1' x) →
+  pbeta : ∀ {t1 t1' : Λ → Λ} {t2 t2'} →
+    (∀ (x : Λ) → t1 x ⇒ t1' x) →
     t2 ⇒ t2' →
     (ƛ t1) · t2 ⇒ t1' t2'
 
 postulate
   ⇒-elim :
     ∀ {l : Level} →
-    ∀ (A : ∀ (@♭ Γ) → (@♭ t1 t2 : ⟦ Γ ⟧ → Term) → Set l) →
+    ∀ (A : ∀ (@♭ Γ) → (@♭ t1 t2 : C⟦ Γ ⟧ → Λ) → Set l) →
     ∀ (HR : ∀ (@♭ Γ) (@♭ t) → A Γ t t) →
     ∀ (H· : ∀ (@♭ Γ) (@♭ t1 t1' t2 t2') → A Γ t1 t1' → A Γ t2 t2' →
             A Γ (λ γ → t1 γ · t2 γ) (λ γ → t1' γ · t2' γ)) →
     ∀ (Hƛ : ∀ (@♭ Γ) →
-            ∀ (@♭ t t' : ⟦ Γ ⟧ → Term → Term) →
+            ∀ (@♭ t t' : C⟦ Γ ⟧ → Λ → Λ) →
             A (suc Γ) (abs t) (abs t') →
             A Γ (λ γ → ƛ t γ) (λ γ → ƛ t' γ)) →
     ∀ (Hβ : ∀ (@♭ Γ) →
-            ∀ (@♭ t1 t1' : ⟦ Γ ⟧ → Term → Term) →
+            ∀ (@♭ t1 t1' : C⟦ Γ ⟧ → Λ → Λ) →
             ∀ (@♭ t2 t2') →
             A (suc Γ) (abs t1) (abs t1') →
             A Γ t2 t2' →
@@ -61,42 +61,42 @@ postulate
     ∀ (@♭ p : ∀ γ → t1 γ ⇒ t2 γ) → A Γ t1 t2
 
 par-abs :
-  ∀ {@♭ Γ} {@♭ t1 t1' : ⟦ Γ ⟧ → Term → Term} →
+  ∀ {@♭ Γ} {@♭ t1 t1' : C⟦ Γ ⟧ → Λ → Λ} →
   (p : ∀ γ x → t1 γ x ⇒ t1' γ x) →
   ∀ γ → abs t1 γ ⇒ abs t1' γ
 par-abs p γ = p (tail γ) (head γ)
 
-_⊢_⇒ₛ_ : ∀ Γ (γ γ' : ⟦ Γ ⟧) → Set
-_⊢_⇒ₛ_ Γ γ γ' = ∀ (v : Var Γ) → ⟦ v ⟧ᵥ γ ⇒ ⟦ v ⟧ᵥ γ'
+_⊢_⇒ₛ_ : ∀ Γ (γ γ' : C⟦ Γ ⟧) → Set
+_⊢_⇒ₛ_ Γ γ γ' = ∀ (v : Var Γ) → V⟦ v ⟧ γ ⇒ V⟦ v ⟧ γ'
 
 infixl 2 _,,ₛ_
 
-_,,ₛ_ : ∀ {Γ} {γ γ' : ⟦ Γ ⟧} {x x' : Term} →
+_,,ₛ_ : ∀ {Γ} {γ γ' : C⟦ Γ ⟧} {x x' : Λ} →
         Γ ⊢ γ ⇒ₛ γ' →
         x ⇒  x' →
         (suc Γ) ⊢ (x ∷ γ) ⇒ₛ (x' ∷ γ')
 _,,ₛ_ {Γ} ⇒-γ ⇒-x zero = ⇒-x
 _,,ₛ_ {Γ} ⇒-γ ⇒-x (suc v) = ⇒-γ v
 
-preflₛ : ∀ {Γ} {γ : ⟦ Γ ⟧} → Γ ⊢ γ ⇒ₛ γ
+preflₛ : ∀ {Γ} {γ : C⟦ Γ ⟧} → Γ ⊢ γ ⇒ₛ γ
 preflₛ v = prefl _
 
 ⇒-subst :
   ∀ (@♭ Γ) →
-  ∀ (@♭ t1 t1' : ⟦ Γ ⟧ → Term) →
+  ∀ (@♭ t1 t1' : C⟦ Γ ⟧ → Λ) →
   ∀ (@♭ p1 : ∀ γ  → t1 γ ⇒ t1' γ) →
-  ∀ (γ2 γ2' : ⟦ Γ ⟧) →
+  ∀ (γ2 γ2' : C⟦ Γ ⟧) →
   ∀ (p2 : _ ⊢ γ2 ⇒ₛ γ2') →
   t1 γ2 ⇒ t1' γ2'
 ⇒-subst Γ t1 t1' p1 =
   ⇒-elim A HR H· Hƛ Hβ Γ t1 t1' p1
   where
   A : _
-  A Γ t1 t1' = (γ2 γ2' : ⟦ Γ ⟧) (p2 : _ ⊢ γ2 ⇒ₛ γ2') → t1 γ2 ⇒ t1' γ2'
+  A Γ t1 t1' = (γ2 γ2' : C⟦ Γ ⟧) (p2 : _ ⊢ γ2 ⇒ₛ γ2') → t1 γ2 ⇒ t1' γ2'
 
   HR : _
   HR Γ t1 = λ γ2 γ2' p2 →
-    Term-cong2 _⇒_ (λ _ _ IH → pabs (λ x → IH x (prefl x)))
+    Λ-cong2 _⇒_ (λ _ _ IH → pabs (λ x → IH x (prefl x)))
     (λ _ _ _ _ IH1 IH2 → papp IH1 IH2) t1 γ2 γ2' p2
 
   H· : _
@@ -113,9 +113,9 @@ preflₛ v = prefl _
           (IH2 γ2 γ2' p2)
 
 Res : Ctx → Set
-Res Γ = (⟦ Γ ⟧ → Term) ⊎ (⟦ Γ ⟧ → Term → Term)
+Res Γ = (C⟦ Γ ⟧ → Λ) ⊎ (C⟦ Γ ⟧ → Λ → Λ)
 
-term-of-res : ∀ {Γ} → Res Γ → ⟦ Γ ⟧ → Term
+term-of-res : ∀ {Γ} → Res Γ → C⟦ Γ ⟧ → Λ
 term-of-res (inj₁ t) = t
 term-of-res (inj₂ t) γ = ƛ (t γ)
 
@@ -126,12 +126,12 @@ res-· : ∀ {Γ} → Res Γ → Res Γ → Res Γ
 res-· (inj₁ t1) t2 = inj₁ (λ γ → t1 γ · term-of-res t2 γ)
 res-· (inj₂ t1) t2 = inj₁ (λ γ → t1 γ (term-of-res t2 γ))
 
-diag : ∀ {@♭ Γ} (@♭ t : ⟦ Γ ⟧ → Term) → Res Γ
+diag : ∀ {@♭ Γ} (@♭ t : C⟦ Γ ⟧ → Λ) → Res Γ
 diag {Γ} t =
-  Term-elim _ HV Hƛ H· Γ t
+  Λ-elim _ HV Hƛ H· Γ t
   where
   HV : _
-  HV Γ x = inj₁ (λ γ → ⟦ x ⟧ᵥ γ)
+  HV Γ x = inj₁ (λ γ → V⟦ x ⟧ γ)
 
   Hƛ : _
   Hƛ Γ _ IH = res-ƛ IH
@@ -139,10 +139,10 @@ diag {Γ} t =
   H· : _
   H· Γ _ _ IH1 IH2 = res-· IH1 IH2
 
-data diag-spec {Γ} (t : ⟦ Γ ⟧ → Term) : Res Γ → Set where
+data diag-spec {Γ} (t : C⟦ Γ ⟧ → Λ) : Res Γ → Set where
   inj₁ : ∀ {t'} → (∀ γ → t γ ⇒ t' γ) → diag-spec t (inj₁ t')
 
-  inj₂ : ∀ {t₀ t' : ⟦ Γ ⟧ → Term → Term} →
+  inj₂ : ∀ {t₀ t' : C⟦ Γ ⟧ → Λ → Λ} →
          t ≡ (λ γ → ƛ t₀ γ) →
          (∀ γ x → t₀ γ x ⇒ t' γ x) →
          diag-spec t (inj₂ t')
@@ -166,15 +166,15 @@ diag-res-· (inj₂ refl p1) p2 = inj₁ (λ γ → pbeta (p1 γ) (diag-term-of-
 
 
 ⇒-diag : ∀ {@♭ Γ} →
-         ∀ (@♭ t : ⟦ Γ ⟧ → Term) →
+         ∀ (@♭ t : C⟦ Γ ⟧ → Λ) →
          diag-spec t (diag t)
 ⇒-diag {Γ} t =
   -- Removing this type annotation causes type checking to diverge
-  Term-elim (λ Γ t → diag-spec t (diag t)) HV Hƛ H· Γ t
+  Λ-elim (λ Γ t → diag-spec t (diag t)) HV Hƛ H· Γ t
   where
 
   HV : _
-  HV Γ v = inj₁ (λ γ → prefl (⟦ v ⟧ᵥ γ))
+  HV Γ v = inj₁ (λ γ → prefl (V⟦ v ⟧ γ))
 
   Hƛ : _
   Hƛ Γ t IH = diag-res-ƛ IH
@@ -198,7 +198,7 @@ diag-β {Γ} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
   p x γ = preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ ,,ₛ prefl x
 
 triangle : ∀ (@♭ Γ) →
-           ∀ (@♭ t t' : ⟦ Γ ⟧ → Term) →
+           ∀ (@♭ t t' : C⟦ Γ ⟧ → Λ) →
            ∀ (@♭ p : ∀ γ → t γ ⇒ t' γ) →
            diag-spec t' (diag t)
 triangle Γ t t' p =
@@ -218,10 +218,10 @@ triangle Γ t t' p =
   Hβ Γ t1 t1' t2 t2' (to-♭ IH1) (to-♭ IH2) = to-♭ (diag-β IH1 IH2)
 
 diamond : ∀ (@♭ Γ) →
-          ∀ (@♭ t t1 t2 : ⟦ Γ ⟧ → Term) →
+          ∀ (@♭ t t1 t2 : C⟦ Γ ⟧ → Λ) →
           ∀ (@♭ p1 : ∀ γ → t γ ⇒ t1 γ) →
           ∀ (@♭ p2 : ∀ γ → t γ ⇒ t2 γ) →
-          Σ[ t' ∈ (⟦ Γ ⟧ → Term) ]
+          Σ[ t' ∈ (C⟦ Γ ⟧ → Λ) ]
             (∀ γ → t1 γ ⇒ t' γ) × (∀ γ → t2 γ ⇒ t' γ)
 diamond Γ t t1 t2 p1 p2 =
   term-of-res (diag t) ,
