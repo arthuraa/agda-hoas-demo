@@ -64,7 +64,7 @@ par-abs :
   ∀ {@♭ Γ} {@♭ t1 t1' : C⟦ Γ ⟧ → Λ → Λ} →
   (p : ∀ γ x → t1 γ x ⇒ t1' γ x) →
   ∀ γ → abs t1 γ ⇒ abs t1' γ
-par-abs p γ = p (tail γ) (head γ)
+par-abs p γ = p (proj₂ γ) (proj₁ γ)
 
 _⊢_⇒ₛ_ : ∀ Γ (γ γ' : C⟦ Γ ⟧) → Set
 _⊢_⇒ₛ_ Γ γ γ' = ∀ (v : Var Γ) → V⟦ v ⟧ γ ⇒ V⟦ v ⟧ γ'
@@ -74,7 +74,7 @@ infixl 2 _,,ₛ_
 _,,ₛ_ : ∀ {Γ} {γ γ' : C⟦ Γ ⟧} {x x' : Λ} →
         Γ ⊢ γ ⇒ₛ γ' →
         x ⇒  x' →
-        (suc Γ) ⊢ (x ∷ γ) ⇒ₛ (x' ∷ γ')
+        (suc Γ) ⊢ (x , γ) ⇒ₛ (x' , γ')
 _,,ₛ_ {Γ} ⇒-γ ⇒-x zero = ⇒-x
 _,,ₛ_ {Γ} ⇒-γ ⇒-x (suc v) = ⇒-γ v
 
@@ -105,11 +105,11 @@ preflₛ v = prefl _
 
   Hƛ : _
   Hƛ Γ t1 t1' IH γ2 γ2' p2 =
-    pabs (λ x → IH (x ∷ γ2) (x ∷ γ2') (p2 ,,ₛ prefl x))
+    pabs (λ x → IH (x , γ2) (x , γ2') (p2 ,,ₛ prefl x))
 
   Hβ : _
   Hβ Γ t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
-    pbeta (λ x → IH1 (x ∷ γ2) (x ∷ γ2') (p2 ,,ₛ prefl x))
+    pbeta (λ x → IH1 (x , γ2) (x , γ2') (p2 ,,ₛ prefl x))
           (IH2 γ2 γ2' p2)
 
 Res : Ctx → Set
@@ -120,7 +120,7 @@ term-of-res (inj₁ t) = t
 term-of-res (inj₂ t) γ = ƛ (t γ)
 
 res-ƛ : ∀ {Γ} → Res (suc Γ) → Res Γ
-res-ƛ t = inj₂ (λ γ x → term-of-res t (x ∷ γ))
+res-ƛ t = inj₂ (λ γ x → term-of-res t (x , γ))
 
 res-· : ∀ {Γ} → Res Γ → Res Γ → Res Γ
 res-· (inj₁ t1) t2 = inj₁ (λ γ → t1 γ · term-of-res t2 γ)
@@ -154,8 +154,8 @@ diag-term-of-res (inj₂ refl p) γ = pabs (p γ)
 
 diag-res-ƛ : ∀ {Γ t t'} →
              diag-spec {suc Γ} t t' →
-             diag-spec {Γ} (λ γ → ƛ (λ x → t (x ∷ γ))) (res-ƛ t')
-diag-res-ƛ p = inj₂ refl (λ γ x → diag-term-of-res p (x ∷ γ))
+             diag-spec {Γ} (λ γ → ƛ (λ x → t (x , γ))) (res-ƛ t')
+diag-res-ƛ p = inj₂ refl (λ γ x → diag-term-of-res p (x , γ))
 
 diag-res-· : ∀ {Γ t1 t1' t2 t2'} →
              diag-spec {Γ} t1 t1' →
@@ -185,16 +185,16 @@ diag-res-· (inj₂ refl p1) p2 = inj₁ (λ γ → pbeta (p1 γ) (diag-term-of-
 diag-β : ∀ {@♭ Γ} {@♭ t1 t1' t2 t2'} →
          @♭ diag-spec {suc Γ} t1 t1' →
          @♭ diag-spec {Γ} t2 t2' →
-         diag-spec (λ γ → t1 (t2 γ ∷ γ)) (res-· (res-ƛ t1') t2')
+         diag-spec (λ γ → t1 (t2 γ , γ)) (res-· (res-ƛ t1') t2')
 diag-β (inj₁ p1) p2 =
-  inj₁ (λ γ → ⇒-subst _ _ _ p1 (_ ∷ γ) (_ ∷ γ)
+  inj₁ (λ γ → ⇒-subst _ _ _ p1 (_ , γ) (_ , γ)
               (preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ))
 diag-β {Γ} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
   inj₁ (λ γ → pabs (λ x → ⇒-subst (suc (suc Γ))
                           (abs t1) (abs t1') (par-abs p1)
-                          (x ∷ t2 γ ∷ γ) (x ∷ term-of-res t2' γ ∷ γ) (p x γ)))
+                          (x , t2 γ , γ) (x , term-of-res t2' γ , γ) (p x γ)))
   where
-  p : ∀ x γ → _ ⊢ (x ∷ t2 γ ∷ γ) ⇒ₛ (x ∷ term-of-res t2' γ ∷ γ)
+  p : ∀ x γ → _ ⊢ (x , t2 γ , γ) ⇒ₛ (x , term-of-res t2' γ , γ)
   p x γ = preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ ,,ₛ prefl x
 
 triangle : ∀ (@♭ Γ) →
