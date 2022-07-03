@@ -67,7 +67,7 @@ par-abs :
 par-abs p γ = p (proj₂ γ) (proj₁ γ)
 
 _⊢_⇒ₛ_ : ∀ n (γ γ' : Λ^ n) → Set
-_⊢_⇒ₛ_ n γ γ' = ∀ (v : Fin n) → ` v γ ⇒ ` v γ'
+_⊢_⇒ₛ_ n γ γ' = ∀ (v : Fin n) → ⟦ v ⟧ γ ⇒ ⟦ v ⟧ γ'
 
 infixl 2 _,,ₛ_
 
@@ -131,7 +131,7 @@ diag {n} t =
   Λ-elim _ HV Hƛ H· n t
   where
   HV : _
-  HV n x = inj₁ (λ γ → ` x γ)
+  HV n x = inj₁ (λ γ → ⟦ x ⟧ γ)
 
   Hƛ : _
   Hƛ n _ IH = res-ƛ IH
@@ -174,7 +174,7 @@ diag-res-· (inj₂ refl p1) p2 = inj₁ (λ γ → pbeta (p1 γ) (diag-term-of-
   where
 
   HV : _
-  HV n v = inj₁ (λ γ → prefl (` v γ))
+  HV n v = inj₁ (λ γ → prefl (⟦ v ⟧ γ))
 
   Hƛ : _
   Hƛ n t IH = diag-res-ƛ IH

@@ -18,7 +18,7 @@ data Λ[_] : ℕ → Set where
   Abs : ∀ {n} → Λ[ suc n ] → Λ[ n ]
 
 interp : ∀ {@♭ n} → (@♭ t : Λ[ n ]) → Λ^ n → Λ
-interp (Var x) = ` x
+interp (Var x) = ⟦ x ⟧
 interp (App t₁ t₂) γ = interp t₁ γ · interp t₂ γ
 interp (Abs t) γ = ƛ (λ x → interp t (x , γ))
 
@@ -60,7 +60,7 @@ interp-reify t = Λ-elim A HV Hƛ H· _ t
   A : ∀ (@♭ n) → (@♭ t : Λ^ n → Λ) → Set
   A n t = interp (reify t) ≡ t
 
-  HV : ∀ (@♭ n) (@♭ v : Fin n) → A n (` v)
+  HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧
   HV n v = refl
 
   Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (abs t) → A n (λ γ → ƛ t γ)

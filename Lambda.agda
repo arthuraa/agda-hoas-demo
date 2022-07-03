@@ -73,9 +73,9 @@ to postulate a case-analysis principle for Λ.  Here it is:
 Λ^ zero = ⊤
 Λ^ (suc Γ) = Λ × Λ^ Γ
 
-` : {n : ℕ} → Fin n → Λ^ n → Λ
-` zero = proj₁
-` (suc x) = λ γ → ` x (proj₂ γ)
+⟦_⟧ : {n : ℕ} → Fin n → Λ^ n → Λ
+⟦ zero ⟧ = proj₁
+⟦ suc x ⟧ = λ γ → ⟦ x ⟧ (proj₂ γ)
 
 -- Helper function
 abs : {n : ℕ} → (Λ^ n → Λ → Λ) → Λ^ (suc n) → Λ
@@ -84,7 +84,7 @@ abs t γ = t (proj₂ γ) (proj₁ γ)
 postulate
   Λ-elim : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Λ^ n → Λ) → Set l) →
-    (HV : ∀ (@♭ n) (@♭ v : Fin n) → A n (` v)) →
+    (HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧) →
     (Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (abs t) →
       A n (λ γ → ƛ (t γ))) →
     (H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) →
@@ -114,7 +114,7 @@ postulate
   Λ-elim-V :
     ∀ {l : Level} A HV Hƛ H· →
     ∀ (@♭ n)  (@♭ v : Fin n) →
-    Λ-elim {l} A HV Hƛ H· n (` v) ≡ HV n v
+    Λ-elim {l} A HV Hƛ H· n ⟦ v ⟧ ≡ HV n v
 
 postulate
   Λ-elim-ƛ :
@@ -140,11 +140,11 @@ postulate
   ∀ (Hƛ : ∀ (t : Λ → Λ) → (∀ x → A x → A (t x)) → A (ƛ t)) →
   ∀ (H· : ∀ t1 t2 → A t1 → A t2 → A (t1 · t2)) →
   ∀ {@♭ n} (@♭ t : Λ^ n → Λ) →
-  ∀ γ → (∀ (v : Fin n) → A (` v γ)) → A (t γ)
+  ∀ γ → (∀ (v : Fin n) → A (⟦ v ⟧ γ)) → A (t γ)
 Λ-cong1 {l} A Hƛ H· t = Λ-elim A' HV' Hƛ' H·' _ t
   where
   A' : ∀ (@♭ n) (@♭ A : Λ^ n → Λ) → Set l
-  A' n t = ∀ γ → (∀ (v : Fin n) → A (` v γ)) → A (t γ)
+  A' n t = ∀ γ → (∀ (v : Fin n) → A (⟦ v ⟧ γ)) → A (t γ)
 
   HV' : _
   HV' n x γ A-γ = A-γ x
@@ -152,7 +152,7 @@ postulate
   Hƛ' : _
   Hƛ' n t IH γ A-γ = Hƛ (t γ) (λ x A-x → IH (x , γ) (A-γ' x A-x))
     where
-    A-γ' : ∀ x → A x → ∀ (v : Fin (suc n)) → A (` v (x , γ))
+    A-γ' : ∀ x → A x → ∀ (v : Fin (suc n)) → A (⟦ v ⟧ (x , γ))
     A-γ' x A-x zero = A-x
     A-γ' x A-x (suc v) = A-γ v
 
@@ -167,11 +167,11 @@ postulate
   ∀ (H· : ∀ t11 t12 t21 t22 → A t11 t21 → A t12 t22 →
           A (t11 · t12) (t21 · t22)) →
   ∀ {@♭ n} (@♭ t : Λ^ n → Λ) →
-  ∀ γ1 γ2 → (∀ (v : Fin n) → A (` v γ1) (` v γ2)) → A (t γ1) (t γ2)
+  ∀ γ1 γ2 → (∀ (v : Fin n) → A (⟦ v ⟧ γ1) (⟦ v ⟧ γ2)) → A (t γ1) (t γ2)
 Λ-cong2 {l} A Hƛ H· t = Λ-elim A' HV' Hƛ' H·' _ t
   where
   A' : ∀ (@♭ n) (@♭ A : Λ^ n → Λ) → Set l
-  A' n t = ∀ γ1 γ2 → (∀ (v : Fin n) → A (` v γ1) (` v γ2)) →
+  A' n t = ∀ γ1 γ2 → (∀ (v : Fin n) → A (⟦ v ⟧ γ1) (⟦ v ⟧ γ2)) →
            A (t γ1) (t γ2)
 
   HV' : _
@@ -182,7 +182,7 @@ postulate
     (λ x A-x → IH (x , γ1) (x , γ2) (A-γ' x A-x))
     where
     A-γ' : ∀ x → A x x → ∀ (v : Fin (suc n)) →
-           A (` v (x , γ1)) (` v (x , γ2))
+           A (⟦ v ⟧ (x , γ1)) (⟦ v ⟧ (x , γ2))
     A-γ' x A-x zero = A-x
     A-γ' x A-x (suc v) = A-γ v
 
