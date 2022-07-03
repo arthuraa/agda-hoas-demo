@@ -20,7 +20,7 @@ data Λ[_] : ℕ → Set where
 interp : ∀ {@♭ n} → (@♭ t : Λ[ n ]) → Λ^ n → Λ
 interp (Var x) = ⟦ x ⟧
 interp (App t₁ t₂) γ = interp t₁ γ · interp t₂ γ
-interp (Abs t) γ = ƛ (λ x → interp t (x , γ))
+interp (Abs t) γ = ƛ (λ x → interp t (γ , x))
 
 reify : ∀ {@♭ n} → (@♭ t : Λ^ n → Λ) → Λ[ n ]
 reify t = Λ-elim (λ n _ → Λ[ n ]) HV Hƛ H· _ t
@@ -63,18 +63,18 @@ interp-reify t = Λ-elim A HV Hƛ H· _ t
   HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧
   HV n v = refl
 
-  Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (abs t) → A n (λ γ → ƛ t γ)
+  Hƛ : ∀ (@♭ n) (@♭ t : Λ^ (suc n) → Λ) → A (suc n) t → A n (λ γ → ƛ curry t γ)
   Hƛ n t IH = begin
-    interp (reify (λ γ → ƛ t γ))  ≡⟨⟩
-    interp (Abs (reify (abs t)))  ≡⟨⟩
-    abs' (interp (reify (abs t))) ≡⟨ e ⟩
-    abs' (abs t) ≡⟨⟩
-    (λ γ → ƛ t γ) ∎
+    interp (reify (λ γ → ƛ curry t γ))  ≡⟨⟩
+    interp (Abs (reify t))  ≡⟨⟩
+    abs' (interp (reify t)) ≡⟨ e ⟩
+    abs' t ≡⟨⟩
+    (λ γ → ƛ curry t γ) ∎
     where
     abs' : (@♭ t' : Λ^ (suc n) → Λ) → Λ^ n → Λ
-    abs' t' γ = ƛ (λ x → t' (x , γ))
+    abs' t' γ = ƛ (λ x → t' (γ , x))
 
-    e : abs' (interp (reify (abs t))) ≡ abs' (abs t)
+    e : abs' (interp (reify t)) ≡ abs' t
     e rewrite IH = refl
 
   H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)

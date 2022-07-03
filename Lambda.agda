@@ -71,22 +71,18 @@ to postulate a case-analysis principle for Λ.  Here it is:
 
 Λ^ : ℕ → Set
 Λ^ zero = ⊤
-Λ^ (suc Γ) = Λ × Λ^ Γ
+Λ^ (suc Γ) = Λ^ Γ × Λ
 
 ⟦_⟧ : {n : ℕ} → Fin n → Λ^ n → Λ
-⟦ zero ⟧ = proj₁
-⟦ suc x ⟧ = λ γ → ⟦ x ⟧ (proj₂ γ)
-
--- Helper function
-abs : {n : ℕ} → (Λ^ n → Λ → Λ) → Λ^ (suc n) → Λ
-abs t γ = t (proj₂ γ) (proj₁ γ)
+⟦ zero ⟧ = proj₂
+⟦ suc x ⟧ = λ γ → ⟦ x ⟧ (proj₁ γ)
 
 postulate
   Λ-elim : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Λ^ n → Λ) → Set l) →
     (HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧) →
-    (Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (abs t) →
-      A n (λ γ → ƛ (t γ))) →
+    (Hƛ : ∀ (@♭ n) (@♭ t : Λ^ (suc n) → Λ) → A (suc n) t →
+      A n (λ γ → ƛ (curry t γ))) →
     (H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) →
       A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
     ∀ (@♭ n) (@♭ t : Λ^ n → Λ) → A n t
@@ -95,7 +91,13 @@ postulate
 
 This looks a bit different from elimination principles for usual data types.
 First, the type tells us that the eliminator applies to single terms, but to any
-_function_ of type Λ^ n → Λ.
+_function_ of type Λ^ n → Λ.  This generalization is what allows us to traverse
+abstraction terms.  If we only had an eliminator for Λ rather than Λ^ n → Λ, it
+would be unclear what to do when traversing something of the form ƛ t, since the
+type of t, Λ → Λ, wouldn't be covered by the eliminator.  If we can eliminate
+any function of type Λ^ n → Λ, on the other hand, we can just
+
+there wouldn't be anything we could do when we reached the ƛ case,
 
 To do this soundly, we use Agda's @♭ modality.  Roughly speaking, terms that are
 not associated with the @♭ modality can depend on @♭ terms, but not the other
@@ -120,8 +122,8 @@ postulate
   Λ-elim-ƛ :
     ∀ {l : Level} A HV Hƛ H· →
     ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) →
-    Λ-elim {l} A HV Hƛ H· n (λ γ → ƛ (t γ)) ≡
-    Hƛ n t (Λ-elim A HV Hƛ H· (suc n) (abs t))
+    Λ-elim {l} A HV Hƛ H· n (λ γ → ƛ t γ) ≡
+    Hƛ n _ (Λ-elim A HV Hƛ H· (suc n) (uncurry t))
 
 postulate
   Λ-elim-· :
@@ -150,9 +152,9 @@ postulate
   HV' n x γ A-γ = A-γ x
 
   Hƛ' : _
-  Hƛ' n t IH γ A-γ = Hƛ (t γ) (λ x A-x → IH (x , γ) (A-γ' x A-x))
+  Hƛ' n t IH γ A-γ = Hƛ (λ x → t (γ , x)) (λ x A-x → IH (γ , x) (A-γ' x A-x))
     where
-    A-γ' : ∀ x → A x → ∀ (v : Fin (suc n)) → A (⟦ v ⟧ (x , γ))
+    A-γ' : ∀ x → A x → ∀ (v : Fin (suc n)) → A (⟦ v ⟧ (γ , x))
     A-γ' x A-x zero = A-x
     A-γ' x A-x (suc v) = A-γ v
 
@@ -178,11 +180,11 @@ postulate
   HV' n x γ1 γ2 A-γ = A-γ x
 
   Hƛ' : _
-  Hƛ' n t IH γ1 γ2 A-γ = Hƛ (t γ1) (t γ2)
-    (λ x A-x → IH (x , γ1) (x , γ2) (A-γ' x A-x))
+  Hƛ' n t IH γ1 γ2 A-γ = Hƛ (λ x → t (γ1 , x)) (λ x → t (γ2 , x))
+    (λ x A-x → IH (γ1 , x) (γ2 , x) (A-γ' x A-x))
     where
     A-γ' : ∀ x → A x x → ∀ (v : Fin (suc n)) →
-           A (⟦ v ⟧ (x , γ1)) (⟦ v ⟧ (x , γ2))
+           A (⟦ v ⟧ (γ1 , x)) (⟦ v ⟧ (γ2 , x))
     A-γ' x A-x zero = A-x
     A-γ' x A-x (suc v) = A-γ v
 
