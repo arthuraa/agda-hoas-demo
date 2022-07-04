@@ -81,8 +81,8 @@ postulate
   Λ-elim : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Λ^ n → Λ) → Set l) →
     (HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧) →
-    (Hƛ : ∀ (@♭ n) (@♭ t : Λ^ (suc n) → Λ) → A (suc n) t →
-      A n (λ γ → ƛ (curry t γ))) →
+    (Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (uncurry t) →
+      A n (λ γ → ƛ t γ)) →
     (H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) →
       A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)) →
     ∀ (@♭ n) (@♭ t : Λ^ n → Λ) → A n t
@@ -152,7 +152,7 @@ postulate
   HV' n x γ A-γ = A-γ x
 
   Hƛ' : _
-  Hƛ' n t IH γ A-γ = Hƛ (λ x → t (γ , x)) (λ x A-x → IH (γ , x) (A-γ' x A-x))
+  Hƛ' n t IH γ A-γ = Hƛ (t γ) (λ x A-x → IH (γ , x) (A-γ' x A-x))
     where
     A-γ' : ∀ x → A x → ∀ (v : Fin (suc n)) → A (⟦ v ⟧ (γ , x))
     A-γ' x A-x zero = A-x
@@ -180,7 +180,7 @@ postulate
   HV' n x γ1 γ2 A-γ = A-γ x
 
   Hƛ' : _
-  Hƛ' n t IH γ1 γ2 A-γ = Hƛ (λ x → t (γ1 , x)) (λ x → t (γ2 , x))
+  Hƛ' n t IH γ1 γ2 A-γ = Hƛ (t γ1) (t γ2)
     (λ x A-x → IH (γ1 , x) (γ2 , x) (A-γ' x A-x))
     where
     A-γ' : ∀ x → A x x → ∀ (v : Fin (suc n)) →

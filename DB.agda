@@ -63,18 +63,18 @@ interp-reify t = Λ-elim A HV Hƛ H· _ t
   HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧
   HV n v = refl
 
-  Hƛ : ∀ (@♭ n) (@♭ t : Λ^ (suc n) → Λ) → A (suc n) t → A n (λ γ → ƛ curry t γ)
+  Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (uncurry t) → A n (λ γ → ƛ t γ)
   Hƛ n t IH = begin
-    interp (reify (λ γ → ƛ curry t γ))  ≡⟨⟩
-    interp (Abs (reify t))  ≡⟨⟩
-    abs' (interp (reify t)) ≡⟨ e ⟩
-    abs' t ≡⟨⟩
-    (λ γ → ƛ curry t γ) ∎
+    interp (reify (λ γ → ƛ t γ))  ≡⟨⟩
+    interp (Abs (reify (uncurry t)))  ≡⟨⟩
+    abs' (interp (reify (uncurry t))) ≡⟨ e ⟩
+    abs' (uncurry t) ≡⟨⟩
+    (λ γ → ƛ t γ) ∎
     where
     abs' : (@♭ t' : Λ^ (suc n) → Λ) → Λ^ n → Λ
     abs' t' γ = ƛ (λ x → t' (γ , x))
 
-    e : abs' (interp (reify t)) ≡ abs' t
+    e : abs' (interp (reify (uncurry t))) ≡ abs' (uncurry t)
     e rewrite IH = refl
 
   H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)
