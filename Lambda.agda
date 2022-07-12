@@ -2,7 +2,7 @@
 
 module Lambda where
 
-open import Agda.Primitive
+open import Agda.Primitive hiding (_⊔_)
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 open import Relation.Binary.PropositionalEquality
@@ -13,6 +13,8 @@ open import Data.Product
 open import Data.Fin
 open import Data.Vec
 open import Data.Nat
+
+open ≡-Reasoning
 
 {-
 
@@ -115,11 +117,7 @@ allowed to use the result of calling the eliminator recursively on each subterm.
 Note how, in Hƛ, we perform a recursive call to uncurry t, which corresponds to
 moving the variable bound by the abstraction into the context of free variables.
 
-We can use Agda's custom rewrite rules to describe how the eliminator computes.
-The rules are not so well behaved because they are not confluent: for example,
-if v is 1, then ⟦ v ⟧ reduces to λ γ → proj₂ (proj₁ γ), which is not covered by
-any of the rewrite rules below.  Nevertheless, the rules are good enough to
-cover the examples we'll consider here, so we'll stick to them for simplicity.
+We can use Agda's custom rewrite rules to define how the eliminator computes.
 
 -}
 
@@ -146,3 +144,66 @@ postulate
 {-# REWRITE Λ-elim-V #-}
 {-# REWRITE Λ-elim-ƛ #-}
 {-# REWRITE Λ-elim-· #-}
+
+{-
+
+To illustrate the use of Λ-elim, we can define a function that computes the
+height of a term.  We add a successor for each constructor that we traverse,
+taking the maximum of both heights when we traverse an application and returning
+zero when we hit a variable.
+
+-}
+
+height : ∀ (@♭ n) (@♭ t : Λ^ n → Λ) → ℕ
+height n t = Λ-elim (λ _ _ → ℕ) HV Hƛ H· n t
+  where
+  HV : _
+  HV _ _ = 0
+
+  Hƛ : _
+  Hƛ n t height-t = suc height-t
+
+  H· : _
+  H· n t1 t2 height-t1 height-t2 = suc (height-t1 ⊔ height-t2)
+
+{-
+
+Here is one example showing how height computes on the infinite loop term:
+
+ω = (λ x. x x) (λ x. x x)
+
+Ideally, Agda should be able to compute the height of this term just by reducing
+it with the rules that we defined above.  Unfortunately, this does not quite
+work with the rules that we used because they are not confluent.  For example,
+consider the term height 1 ⟦ zero ⟧.  By using Λ-elim-V, it should be possible
+to show that this term is equal to 0.  However, Agda ends up first simplifying ⟦
+zero ⟧ to proj₁, which brings the term to a form where no useful rewrite rules
+apply.  Nevertheless, we can still show that height ω is equal to 3 by rewriting
+the term manually.
+
+-}
+
+height-var : ∀ (@♭ n) (@♭ v : Fin n) → height n ⟦ v ⟧ ≡ 0
+height-var n v = refl
+
+ω : Λ
+ω = (ƛ (λ x → x · x)) · (ƛ (λ x → x · x))
+
+height-ω : height 0 (λ _ → ω) ≡ 3
+height-ω = begin
+  height 0 (λ _ → ω) ≡⟨⟩
+  suc (height 0 (λ _ → self-app) ⊔ height 0 (λ _ → self-app)) ≡⟨ e ⟩
+  3 ∎
+  where
+  self-app = ƛ (λ x → x · x)
+
+  height-self-app : height 0 (λ _ → self-app) ≡ 2
+  height-self-app = begin
+    height 0 (λ _ → self-app) ≡⟨⟩
+    suc (height 1 (λ γ → ⟦ zero ⟧ γ · ⟦ zero ⟧ γ)) ≡⟨⟩
+    suc (suc (height 1 ⟦ zero ⟧ ⊔ height 1 ⟦ zero ⟧)) ≡⟨ e' ⟩
+    2 ∎
+    where
+    e' = cong suc (cong suc (cong₂ _⊔_ (height-var 1 zero) (height-var 1 zero)))
+
+  e = cong suc (cong₂ _⊔_ height-self-app height-self-app)
