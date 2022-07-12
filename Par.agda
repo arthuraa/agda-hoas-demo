@@ -69,17 +69,39 @@ par-uncurry p γ = p (proj₁ γ) (proj₂ γ)
 _⊢_⇒ₛ_ : ∀ n (γ γ' : Λ^ n) → Set
 _⊢_⇒ₛ_ n γ γ' = ∀ (v : Fin n) → ⟦ v ⟧ γ ⇒ ⟦ v ⟧ γ'
 
-infixl 2 _,,ₛ_
+infixl 2 _,ₛ_
 
-_,,ₛ_ : ∀ {n} {γ γ' : Λ^ n} {x x' : Λ} →
+_,ₛ_ : ∀ {n} {γ γ' : Λ^ n} {x x' : Λ} →
         n ⊢ γ ⇒ₛ γ' →
         x ⇒  x' →
         (suc n) ⊢ (γ , x) ⇒ₛ (γ' , x')
-_,,ₛ_ {n} ⇒-γ ⇒-x zero = ⇒-x
-_,,ₛ_ {n} ⇒-γ ⇒-x (suc v) = ⇒-γ v
+_,ₛ_ {n} ⇒-γ ⇒-x zero = ⇒-x
+_,ₛ_ {n} ⇒-γ ⇒-x (suc v) = ⇒-γ v
 
 preflₛ : ∀ {n} {γ : Λ^ n} → n ⊢ γ ⇒ₛ γ
 preflₛ v = prefl _
+
+⇒-subst-refl :
+  ∀ (@♭ n) →
+  ∀ (@♭ t : Λ^ n → Λ) →
+  ∀ (γ2 γ2' : Λ^ n) →
+  ∀ (p2 : _ ⊢ γ2 ⇒ₛ γ2') →
+  t γ2 ⇒ t γ2'
+⇒-subst-refl n t = Λ-elim A HV Hƛ H· n t
+  where
+  A : _
+  A n t = (γ2 γ2' : Λ^ n) (p2 : _ ⊢ γ2 ⇒ₛ γ2') → t γ2 ⇒ t γ2'
+
+  HV : _
+  HV n v γ2 γ2' p2 = p2 v
+
+  Hƛ : _
+  Hƛ n t IH γ2 γ2' p2 =
+    pabs (λ x → IH (γ2 , x) (γ2' , x) (p2 ,ₛ prefl x))
+
+  H· : _
+  H· n t1 t2 IH1 IH2 γ2 γ2' p2 = papp (IH1 γ2 γ2' p2) (IH2 γ2 γ2' p2)
+
 
 ⇒-subst :
   ∀ (@♭ n) →
@@ -95,9 +117,7 @@ preflₛ v = prefl _
   A n t1 t1' = (γ2 γ2' : Λ^ n) (p2 : _ ⊢ γ2 ⇒ₛ γ2') → t1 γ2 ⇒ t1' γ2'
 
   HR : _
-  HR n t1 = λ γ2 γ2' p2 →
-    Λ-cong2 _⇒_ (λ _ _ IH → pabs (λ x → IH x (prefl x)))
-    (λ _ _ _ _ IH1 IH2 → papp IH1 IH2) t1 γ2 γ2' p2
+  HR n t1 = ⇒-subst-refl n t1
 
   H· : _
   H· n t11 t11' t12 t12' IH1 IH2 = λ γ2 γ2' p2 →
@@ -105,11 +125,11 @@ preflₛ v = prefl _
 
   Hƛ : _
   Hƛ n t1 t1' IH γ2 γ2' p2 =
-    pabs (λ x → IH (γ2 , x) (γ2' , x) (p2 ,,ₛ prefl x))
+    pabs (λ x → IH (γ2 , x) (γ2' , x) (p2 ,ₛ prefl x))
 
   Hβ : _
   Hβ n t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
-    pbeta (λ x → IH1 (γ2 , x) (γ2' , x) (p2 ,,ₛ prefl x))
+    pbeta (λ x → IH1 (γ2 , x) (γ2' , x) (p2 ,ₛ prefl x))
           (IH2 γ2 γ2' p2)
 
 Res : ℕ → Set
@@ -188,14 +208,14 @@ diag-β : ∀ {@♭ n} {@♭ t1 t1' t2 t2'} →
          diag-spec (λ γ → t1 (γ , t2 γ)) (res-· (res-ƛ t1') t2')
 diag-β (inj₁ p1) p2 =
   inj₁ (λ γ → ⇒-subst _ _ _ p1 (γ , _) (γ , _)
-              (preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ))
+              (preflₛ {_} {γ} ,ₛ diag-term-of-res p2 γ))
 diag-β {n} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
   inj₁ (λ γ → pabs (λ x → ⇒-subst (suc (suc n))
                           (uncurry t1) (uncurry t1') (par-uncurry p1)
                           ((γ , t2 γ) , x) ((γ , term-of-res t2' γ) , x) (p x γ)))
   where
   p : ∀ x γ → _ ⊢ ((γ , t2 γ) , x) ⇒ₛ ((γ , term-of-res t2' γ) , x)
-  p x γ = preflₛ {_} {γ} ,,ₛ diag-term-of-res p2 γ ,,ₛ prefl x
+  p x γ = preflₛ {_} {γ} ,ₛ diag-term-of-res p2 γ ,ₛ prefl x
 
 triangle : ∀ (@♭ n) →
            ∀ (@♭ t t' : Λ^ n → Λ) →
