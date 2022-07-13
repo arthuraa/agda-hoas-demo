@@ -296,9 +296,43 @@ lemma, which handles the case where the reduction t ⇒ t' corresponds to the �
 rule.  The issue is that diag-β needs to invoke ⇒-subst twice.  Since ⇒-subst is
 defined by ⇒-elim, the proofs of reduction that are feed into it need to be
 marked with ♭, which means that this modality needs to be propagated to the
-arguments of diag-β itself.  However, diag-β is used on the inductive hypotheses
+arguments of diag-β itself.  However, diag-β is applied to the inductive
+hypotheses in triangle, which usually would not be marked with ♭. Fortunately,
+we can prove ⇒-elim-♭ a derived eliminator for ⇒ which does allow us to assume
+that.
 
 -}
+
+⇒-elim-♭ :
+  ∀ {@♭ l : Level} →
+  ∀ (@♭ A : ∀ (@♭ n) → (@♭ t1 t2 : Λ^ n → Λ) → Set l) →
+  ∀ (@♭ HR : ∀ (@♭ n) (@♭ t) → A n t t) →
+  ∀ (@♭ H· : ∀ (@♭ n) (@♭ t1 t1' t2 t2') →
+             @♭ A n t1 t1' → @♭ A n t2 t2' →
+             A n (λ γ → t1 γ · t2 γ) (λ γ → t1' γ · t2' γ)) →
+  ∀ (@♭ Hƛ : ∀ (@♭ n) (@♭ t t' : Λ^ n → Λ → Λ) →
+             @♭ A (suc n) (uncurry t) (uncurry t') →
+             A n (λ γ → ƛ t γ) (λ γ → ƛ t' γ)) →
+  ∀ (@♭ Hβ : ∀ (@♭ n) (@♭ t1 t1' : Λ^ n → Λ → Λ) (@♭ t2 t2') →
+             @♭ A (suc n) (uncurry t1) (uncurry t1') →
+             @♭ A n t2 t2' →
+             A n (λ γ → (ƛ t1 γ) · t2 γ) (λ γ → t1' γ (t2' γ))) →
+  ∀ (@♭ n t t') →
+  ∀ (@♭ p : ∀ γ → t γ ⇒ t' γ) → A n t t'
+⇒-elim-♭ A HR H· Hƛ Hβ n t t' p =
+  from-♭ (⇒-elim (λ n t1 t2 → ♭ (A n t1 t2)) HR' H·' Hƛ' Hβ' n t t' p)
+  where
+  HR' : _
+  HR' n t = to-♭ (HR n t)
+
+  H·' : _
+  H·' n t1 t1' t2 t2' (to-♭ IH1) (to-♭ IH2) = to-♭ (H· n t1 t1' t2 t2' IH1 IH2)
+
+  Hƛ' : _
+  Hƛ' n t t' (to-♭ IH) = to-♭ (Hƛ n t t' IH)
+
+  Hβ' : _
+  Hβ' n t1 t1' t2 t2' (to-♭ IH1) (to-♭ IH2) = to-♭ (Hβ n t1 t1' t2 t2' IH1 IH2)
 
 par-uncurry :
   ∀ {@♭ n} {@♭ t1 t1' : Λ^ n → Λ → Λ} →
@@ -329,20 +363,27 @@ triangle : ∀ (@♭ n) →
            ∀ (@♭ p : ∀ γ → t γ ⇒ t' γ) →
            diag-spec t' (diag t)
 triangle n t t' p =
-  from-♭ (⇒-elim (λ n t t' → ♭ (diag-spec t' (diag t))) HR H· Hƛ Hβ n t t' p)
+  ⇒-elim-♭ (λ n t t' → diag-spec t' (diag t)) HR H· Hƛ Hβ n t t' p
   where
 
   HR : _
-  HR n t = to-♭ (⇒-diag t)
+  HR n t = ⇒-diag t
 
   H· : _
-  H· n t1 t1' t2 t2' (to-♭ IH1) (to-♭ IH2) = to-♭ (diag-res-· IH1 IH2)
+  H· n t1 t1' t2 t2' IH1 IH2 = diag-res-· IH1 IH2
 
   Hƛ : _
-  Hƛ n t t' (to-♭ IH) = to-♭ (diag-res-ƛ IH)
+  Hƛ n t t' IH = diag-res-ƛ IH
 
   Hβ : _
-  Hβ n t1 t1' t2 t2' (to-♭ IH1) (to-♭ IH2) = to-♭ (diag-β IH1 IH2)
+  Hβ n t1 t1' t2 t2' IH1 IH2 = diag-β IH1 IH2
+
+{-
+
+As sketched above, the diamond property of parallel reduction follows easily
+from the triangle lemma.
+
+-}
 
 diamond : ∀ (@♭ n) →
           ∀ (@♭ t t1 t2 : Λ^ n → Λ) →
