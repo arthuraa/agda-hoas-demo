@@ -9,9 +9,8 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Empty
 open import Data.Unit
 open import Data.Sum
-open import Data.Product
+open import Data.Product hiding (curry; uncurry)
 open import Data.Fin
-open import Data.Vec
 open import Data.Nat
 
 open ≡-Reasoning
@@ -69,18 +68,17 @@ Here it is:
 
 -}
 
+-- An n-ary product of terms, represented as a function from bounded naturals.
 Λ^ : ℕ → Set
-Λ^ zero = ⊤
-Λ^ (suc Γ) = Λ^ Γ × Λ
+Λ^ n = Fin n → Λ
 
-⟦_⟧ : {n : ℕ} → Fin n → Λ^ n → Λ
-⟦ zero ⟧ = proj₂
-⟦ suc x ⟧ = λ γ → ⟦ x ⟧ (proj₁ γ)
+uncurry : ∀ {n} → (Λ^ n → Λ → Λ) → Λ^ (suc n) → Λ
+uncurry f γ = f (λ x → γ (suc x)) (γ zero)
 
 postulate
   Λ-elim : {l : Level}
     (A : ∀ (@♭ n) → @♭ (Λ^ n → Λ) → Set l) →
-    (HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧) →
+    (HV : ∀ (@♭ n) (@♭ v : Fin n) → A n (λ γ → γ v)) →
     (Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (uncurry t) →
       A n (λ γ → ƛ t γ)) →
     (H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) →
@@ -93,26 +91,26 @@ This definition looks a bit different from elimination principles for usual data
 types.  First, the type tells us that the eliminator applies to not to
 individual Λ terms, but to _functions_ of type Λ^ n → Λ.  We use such functions
 to represent terms with n free variables.  For example, an open term such as x y
-could be represented as the function λ γ → ⟦ zero ⟧ γ · ⟦ suc zero ⟧ γ, where γ
-: Λ^ 2.  By allowing the eliminator to handle open terms, we can traverse
-application terms by uncurrying the underlying functions and adding an extra
-variable into the "context", as we'll see shortly.
+could be represented as the function λ γ → γ zero · γ (suc zero), where γ : Λ^
+2.  By allowing the eliminator to handle open terms, we can traverse application
+terms by uncurrying the underlying functions and adding an extra variable into
+the "context", as we'll see shortly.
 
 The other difference regarding Λ-elim is the ♭ modality that appears in many
 arguments.  Roughly speaking, the modality ensures that the eliminator cannot be
 applied to terms that have free variables of type Λ, which would render it
 unsound.  Any variables of type Λ must be explicitly declared as functions
 parameters, like we did in the type Λ^ n → Λ above.  We'll come back to this
-modality shortly; for now, it suffices to say that we can convert from ♭
-variables to regular ones, but not the other way around.
+point shortly; for now, it suffices to say that we can convert from ♭ variables
+to regular ones, but not the other way around.
 
 These two differences aside, the type of Λ-elim is not too surprising. It says
 that, to compute a result A n t for some open term t : Λ^ n → Λ, it suffices to
 do so for three kinds of terms, which correspond to the three "branch" arguments
 HV, Hƛ and H·.  In the HV branch, we should produce a result for when the term
 is a variable v, which is represented here by the corresponding projection
-function ⟦ v ⟧ : Λ^ n → Λ.  In the Hƛ and H· branches, we need to produce a
-result when the term begins with an application or an abstraction, but we are
+function (λ γ → γ v) : Λ^ n → Λ.  In the Hƛ and H· branches, we need to produce
+a result when the term begins with an application or an abstraction, but we are
 allowed to use the result of calling the eliminator recursively on each subterm.
 Note how, in Hƛ, we perform a recursive call to uncurry t, which corresponds to
 moving the variable bound by the abstraction into the context of free variables.
@@ -125,7 +123,7 @@ postulate
   Λ-elim-V :
     ∀ {l : Level} A HV Hƛ H· →
     ∀ (@♭ n) (@♭ v : Fin n) →
-    Λ-elim {l} A HV Hƛ H· n ⟦ v ⟧ ≡ HV n v
+    Λ-elim {l} A HV Hƛ H· n (λ γ → γ v) ≡ HV n v
 
 postulate
   Λ-elim-ƛ :
@@ -168,45 +166,15 @@ height n t = Λ-elim (λ _ _ → ℕ) HV Hƛ H· n t
 
 {-
 
-Here is one example showing how height computes on the infinite loop term:
-
-ω = (λ x. x x) (λ x. x x)
-
-Ideally, Agda should be able to compute the height of this term just by reducing
-it with the rules that we defined above.  Unfortunately, this does not quite
-work with the rules that we used because they are not confluent.  For example,
-consider the term height 1 ⟦ zero ⟧.  By using Λ-elim-V, it should be possible
-to show that this term is equal to 0.  However, Agda ends up first simplifying ⟦
-zero ⟧ to proj₁, which brings the term to a form where no useful rewrite rules
-apply.  Nevertheless, we can still show that height ω is equal to 3 by rewriting
-the term manually.
+Here is one example showing how height computes on a term:
 
 -}
-
-height-var : ∀ (@♭ n) (@♭ v : Fin n) → height n ⟦ v ⟧ ≡ 0
-height-var n v = refl
 
 ω : Λ
 ω = (ƛ (λ x → x · x)) · (ƛ (λ x → x · x))
 
 height-ω : height 0 (λ _ → ω) ≡ 3
-height-ω = begin
-  height 0 (λ _ → ω) ≡⟨⟩
-  suc (height 0 (λ _ → self-app) ⊔ height 0 (λ _ → self-app)) ≡⟨ e ⟩
-  3 ∎
-  where
-  self-app = ƛ (λ x → x · x)
-
-  height-self-app : height 0 (λ _ → self-app) ≡ 2
-  height-self-app = begin
-    height 0 (λ _ → self-app) ≡⟨⟩
-    suc (height 1 (λ γ → ⟦ zero ⟧ γ · ⟦ zero ⟧ γ)) ≡⟨⟩
-    suc (suc (height 1 ⟦ zero ⟧ ⊔ height 1 ⟦ zero ⟧)) ≡⟨ e' ⟩
-    2 ∎
-    where
-    e' = cong suc (cong suc (cong₂ _⊔_ (height-var 1 zero) (height-var 1 zero)))
-
-  e = cong suc (cong₂ _⊔_ height-self-app height-self-app)
+height-ω = refl
 
 {-
 
@@ -240,4 +208,40 @@ as an inductive family.  (Indeed, as shown in DG.agda, the eliminator is enough
 to establish that the HOAS encoding of λ terms is isomorphic to the more
 conventional definition.)
 
+We include here some auxliary definitions that we'll be useful later on. We
+postulate functional extensionality so that we can prove the isomorphism
+mentioned above.
+
 -}
+
+infixl 2 _▸_
+
+-- Add a λ term to a tuple of terms
+_▸_ : ∀ {n} → Λ^ n → Λ → Λ^ (suc n)
+(γ ▸ t) zero = t
+(γ ▸ t) (suc n) = γ n
+
+curry : ∀ {n} → (Λ^ (suc n) → Λ) → Λ^ n → Λ → Λ
+curry f γ t = f (γ ▸ t)
+
+postulate
+  funext : ∀ {l : Level} {A : Set l} {B : A → Set l} {f g : (x : A) → B x} →
+    (∀ x → f x ≡ g x) →
+    f ≡ g
+
+uncurry-curry : ∀ {n} (f : Λ^ (suc n) → Λ) → uncurry (curry f) ≡ f
+uncurry-curry {n} f = funext e₁
+  where
+  e₁ : ∀ γ → uncurry (curry f) γ ≡ f γ
+  e₁ γ = begin
+    uncurry (curry f) γ ≡⟨⟩
+    curry f γ' (γ zero) ≡⟨⟩
+    f (γ' ▸ γ zero) ≡⟨ cong f (funext e₂) ⟩
+    f γ ∎
+    where
+    γ' : Λ^ n
+    γ' x = γ (suc x)
+
+    e₂ : ∀ x → (γ' ▸ γ zero) x ≡ γ x
+    e₂ zero = refl
+    e₂ (suc x) = refl

@@ -1,9 +1,7 @@
 {-# OPTIONS --rewriting --prop #-}
 
+open import Agda.Primitive
 open import Relation.Binary.PropositionalEquality
-import Axiom.Extensionality.Propositional as P
-open import Data.Product
-open import Data.Vec
 open import Data.Fin
 open import Data.Nat
 open import Lambda
@@ -18,9 +16,9 @@ data Λ[_] : ℕ → Set where
   Abs : ∀ {n} → Λ[ suc n ] → Λ[ n ]
 
 interp : ∀ {@♭ n} → (@♭ t : Λ[ n ]) → Λ^ n → Λ
-interp (Var x) = ⟦ x ⟧
+interp (Var x) γ = γ x
 interp (App t₁ t₂) γ = interp t₁ γ · interp t₂ γ
-interp (Abs t) γ = ƛ (λ x → interp t (γ , x))
+interp (Abs t) γ = ƛ (curry (interp t) γ)
 
 reify : ∀ {@♭ n} → (@♭ t : Λ^ n → Λ) → Λ[ n ]
 reify t = Λ-elim (λ n _ → Λ[ n ]) HV Hƛ H· _ t
@@ -49,10 +47,13 @@ reify-interp (App t₁ t₂) = begin
 
 reify-interp (Abs t) = begin
   reify (interp (Abs t)) ≡⟨⟩
-  Abs (reify (interp t)) ≡⟨ cong Abs IH ⟩
+  reify (λ γ → (ƛ (curry (interp t) γ))) ≡⟨⟩
+  Abs (reify (uncurry (curry (interp t)))) ≡⟨ cong Abs e₁ ⟩
+  Abs (reify (interp t)) ≡⟨ cong Abs (reify-interp t) ⟩
   Abs t ∎
   where
-  IH = reify-interp t
+  e₁ : reify (uncurry (curry (interp t))) ≡ reify (interp t)
+  e₁ rewrite uncurry-curry (interp t) = refl
 
 interp-reify : ∀ {@♭ n} → (@♭ t : Λ^ n → Λ) → interp (reify t) ≡ t
 interp-reify t = Λ-elim A HV Hƛ H· _ t
@@ -60,7 +61,7 @@ interp-reify t = Λ-elim A HV Hƛ H· _ t
   A : ∀ (@♭ n) → (@♭ t : Λ^ n → Λ) → Set
   A n t = interp (reify t) ≡ t
 
-  HV : ∀ (@♭ n) (@♭ v : Fin n) → A n ⟦ v ⟧
+  HV : ∀ (@♭ n) (@♭ v : Fin n) → A n (λ γ → γ v)
   HV n v = refl
 
   Hƛ : ∀ (@♭ n) (@♭ t : Λ^ n → Λ → Λ) → A (suc n) (uncurry t) → A n (λ γ → ƛ t γ)
@@ -72,7 +73,7 @@ interp-reify t = Λ-elim A HV Hƛ H· _ t
     (λ γ → ƛ t γ) ∎
     where
     abs' : (@♭ t' : Λ^ (suc n) → Λ) → Λ^ n → Λ
-    abs' t' γ = ƛ (λ x → t' (γ , x))
+    abs' t' γ = ƛ (λ x → t' (γ ▸ x))
 
     e : abs' (interp (reify (uncurry t))) ≡ abs' (uncurry t)
     e rewrite IH = refl
