@@ -150,17 +150,21 @@ The two pathological examples above had something in common: both relied on the
 ability to do case analysis on terms.  We could rule out these pathological
 examples by forbidding case analysis on terms, but this would be too
 restrictive.  Fortunately, there is a better way out.  As explained by Martin
-Hofmann in his paper "Semantical analysis of higher-order abstract syntax", we
-can still perform case analysis on terms that _do not depend on free variables_.
-We would still be able to write the `isApp`, `flip` and `f` functions above.
-However, it wouldn't be possible to use such functions inside of `Abs`, like we
-did when defining `t` or `exotic` above -- intuitively, because it would require
-performing case analysis on a term variable introduced by the argument of `Abs`.
-We can make this idea precise by working in a type theory extended with a
-modality `♭`.  Intuitively, `♭ T` describes values of type `T` that do not have
-free variables of type `Term`. Agda features a modality that behaves just like
-we need, so we can soundly postulate the existence of a type of HOAS terms.
-This type comes with a case-analysis principle that allows us to write functions
-on HOAS terms and reason about them by structural induction.  Thanks to Agda's
-custom rewrite rules, we can describe the computational behavior of case
-analysis, thus allowing these functions to compute inside Agda.
+Hofmann in his paper "[Semantical analysis of higher-order abstract syntax][1]",
+we can still perform case analysis on terms that _do not depend on free
+variables_.  We would still be able to write the `isApp`, `flip` and `f`
+functions above.  However, it wouldn't be possible to use such functions inside
+of `Abs`, like we did when defining `t` or `exotic` above -- intuitively,
+because it would require performing case analysis on a term variable introduced
+by the argument of `Abs`.  We can make this idea precise by working in a type
+theory extended with a modality `♭`.  Intuitively, `♭ T` describes values of
+type `T` that do not have free variables of type `Term`. Agda features a
+modality that behaves just like we need, so we can soundly postulate the
+existence of a type of HOAS terms.  This type comes with a case-analysis
+principle that allows us to write functions on HOAS terms and reason about them
+by structural induction.  Thanks to Agda's custom rewrite rules, we can describe
+the computational behavior of case analysis, thus allowing these functions to
+compute inside Agda.
+
+
+  [1]: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.122.6636&rep=rep1&type=pdf

@@ -207,3 +207,37 @@ height-ω = begin
     e' = cong suc (cong suc (cong₂ _⊔_ (height-var 1 zero) (height-var 1 zero)))
 
   e = cong suc (cong₂ _⊔_ height-self-app height-self-app)
+
+{-
+
+Before we move on to the rest of the development, a quick word about soundness.
+As we have seen in the README, the possibility of doing case analysis on HOAS
+terms can easily lead to inconsistencies in the theory.  This possibility is
+ruled out here by our use of the ♭ modality.  Since we can go from ♭ variables
+to regular ones, but not the other way around, we can only perform case analysis
+using Λ-elim when defining functions of type @♭ Λ → Λ, but _not_ when defining
+functions of type Λ → Λ.  This prevents us from writing the paradoxical term t
+that we had defined earlier.
+
+A bit more formally, we can validate the reasoning principles laid out here by a
+presheaf model of type theory, as explained by Hofmann.  We consider the
+following base category C.  The objects are natural numbers n, which model a
+number of free variables.  A morphism of type n → m is a substitution of λ terms
+with n free variables for the variables 0, …, m-1.  The identity morphism is
+just the identity substitution, and composition is given by composition of
+substitutions.  Like any presheaf category, PSh(C) is a model of type theory.
+This model is equipped with a modality ♭, which maps a presheaf X to the
+constant presheaf (♭X)(n) = X(0).  In PSh(C), we have an object Λ = Hom(-,1)
+which we use to model the type of λ terms described above.  For general
+category-theoretic reasons, we can show that the exponential object Λ^n → X is
+just the presheaf m ↦ X(m + n).  In particular, ♭(Λ^n → Λ) is just the constant
+presheaf over Λ(n) = Hom(n,1), which can be identified with the set of λ terms
+with n free variables.  This implies that the abstraction term constructor has
+the correct type (Λ → Λ) → Λ (since it binds one free variable).  It also
+implies that the eliminator we defined is correct, since this is precisely the
+eliminator that we would get for a usual well-scoped encoding of λ terms defined
+as an inductive family.  (Indeed, as shown in DG.agda, the eliminator is enough
+to establish that the HOAS encoding of λ terms is isomorphic to the more
+conventional definition.)
+
+-}
