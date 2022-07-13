@@ -5,20 +5,46 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Fin
 open import Data.Nat
 open import Lambda
+open import Flat
 
 open ≡-Reasoning
 
 module DB where
+
+{-
+
+The elimination principle for λ terms we have postulated is essentially the same
+we would have obtained for a traditional dependently typed encoding.  Because of
+this coincidence, the two representations are isomorphic, as we'll show here.
+We begin by defining an inductive family Λ[ n ] that represents λ terms with n
+free variables.
+
+-}
 
 data Λ[_] : ℕ → Set where
   Var : ∀ {n} → Fin n → Λ[ n ]
   App : ∀ {n} → Λ[ n ] → Λ[ n ] → Λ[ n ]
   Abs : ∀ {n} → Λ[ suc n ] → Λ[ n ]
 
-interp : ∀ {@♭ n} → (@♭ t : Λ[ n ]) → Λ^ n → Λ
+{-
+
+The interp function below converts from Λ[ n ] to Λ, given some valuation γ : Λ^
+n for interpreting free variables.
+
+-}
+
+interp : ∀ {n} → (t : Λ[ n ]) → Λ^ n → Λ
 interp (Var x) γ = γ x
 interp (App t₁ t₂) γ = interp t₁ γ · interp t₂ γ
 interp (Abs t) γ = ƛ (curry (interp t) γ)
+
+{-
+
+Going the other way, we can use Λ-elim to construct a function that reifies a
+HOAS λ term with n free variables as an element of Λ[ n ].  Note the use of the
+♭ modality on the argument.
+
+-}
 
 reify : ∀ {@♭ n} → (@♭ t : Λ^ n → Λ) → Λ[ n ]
 reify t = Λ-elim (λ n _ → Λ[ n ]) HV Hƛ H· _ t
@@ -31,6 +57,26 @@ reify t = Λ-elim (λ n _ → Λ[ n ]) HV Hƛ H· _ t
 
     Hƛ : _
     Hƛ _ _ t = Abs t
+
+{-
+
+Here is an example showing how reify computes on the looping λ term ω.
+
+-}
+
+reify-ω : reify {0} (λ _ → ω) ≡
+          App (Abs (App (Var zero) (Var zero)))
+              (Abs (App (Var zero) (Var zero)))
+reify-ω = refl
+
+{-
+
+We can show that interp and reify are inverses of each other.  The proofs follow
+by induction and equational reasoning.  Note that, to show that reify (interp
+(Abs t)) ≡ Abs t, we need to use the uncurry-curry theorem, which requires
+functional extensionality.
+
+-}
 
 reify-interp : ∀ {@♭ n} → (@♭ t : Λ[ n ]) → reify (interp t) ≡ t
 
@@ -48,12 +94,11 @@ reify-interp (App t₁ t₂) = begin
 reify-interp (Abs t) = begin
   reify (interp (Abs t)) ≡⟨⟩
   reify (λ γ → (ƛ (curry (interp t) γ))) ≡⟨⟩
-  Abs (reify (uncurry (curry (interp t)))) ≡⟨ cong Abs e₁ ⟩
+  Abs (reify (uncurry (curry (interp t)))) ≡⟨ cong Abs e ⟩
   Abs (reify (interp t)) ≡⟨ cong Abs (reify-interp t) ⟩
   Abs t ∎
   where
-  e₁ : reify (uncurry (curry (interp t))) ≡ reify (interp t)
-  e₁ rewrite uncurry-curry (interp t) = refl
+  e = cong-♭ reify (uncurry-curry (interp t))
 
 interp-reify : ∀ {@♭ n} → (@♭ t : Λ^ n → Λ) → interp (reify t) ≡ t
 interp-reify t = Λ-elim A HV Hƛ H· _ t
@@ -68,25 +113,19 @@ interp-reify t = Λ-elim A HV Hƛ H· _ t
   Hƛ n t IH = begin
     interp (reify (λ γ → ƛ t γ))  ≡⟨⟩
     interp (Abs (reify (uncurry t)))  ≡⟨⟩
-    abs' (interp (reify (uncurry t))) ≡⟨ e ⟩
-    abs' (uncurry t) ≡⟨⟩
+    abs (interp (reify (uncurry t))) ≡⟨ cong-♭ abs IH ⟩
+    abs (uncurry t) ≡⟨⟩
     (λ γ → ƛ t γ) ∎
     where
-    abs' : (@♭ t' : Λ^ (suc n) → Λ) → Λ^ n → Λ
-    abs' t' γ = ƛ (λ x → t' (γ ▸ x))
-
-    e : abs' (interp (reify (uncurry t))) ≡ abs' (uncurry t)
-    e rewrite IH = refl
+    abs : (@♭ t' : Λ^ (suc n) → Λ) → Λ^ n → Λ
+    abs t' γ = ƛ (curry t' γ)
 
   H· : ∀ (@♭ n) (@♭ t1 t2 : Λ^ n → Λ) → A n t1 → A n t2 → A n (λ γ → t1 γ · t2 γ)
   H· n t1 t2 IH1 IH2 = begin
     interp (reify (λ γ → t1 γ · t2 γ)) ≡⟨⟩
-    app' (interp (reify t1)) (interp (reify t2)) ≡⟨ e ⟩
+    app (interp (reify t1)) (interp (reify t2)) ≡⟨ cong₂-♭ app IH1 IH2 ⟩
+    app t1 t2 ≡⟨⟩
     (λ γ → t1 γ · t2 γ) ∎
     where
-    app' : (@♭ t1 t2 : Λ^ n → Λ) → Λ^ n → Λ
-    app' t1 t2 γ = t1 γ · t2 γ
-
-    e : app' (interp (reify t1)) (interp (reify t2)) ≡
-        λ γ → t1 γ · t2 γ
-    e rewrite IH1 rewrite IH2 = refl
+    app : (@♭ t1 t2 : Λ^ n → Λ) → Λ^ n → Λ
+    app t1 t2 γ = t1 γ · t2 γ

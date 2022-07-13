@@ -49,8 +49,8 @@ t1 · t2 = ⟨ Internal._·_ t1 t2 ⟩
 
 {-
 
-To illustrate this last point, here is how we can show that _·_ is injective and
-disjoint from ƛ_, using just regular equality reasoning.
+To illustrate this last point, we can show that _·_ is injective and disjoint
+from ƛ_, using just regular equality reasoning.
 
 -}
 
@@ -91,10 +91,10 @@ This definition looks a bit different from elimination principles for usual data
 types.  First, the type tells us that the eliminator applies to not to
 individual Λ terms, but to _functions_ of type Λ^ n → Λ.  We use such functions
 to represent terms with n free variables.  For example, an open term such as x y
-could be represented as the function λ γ → γ zero · γ (suc zero), where γ : Λ^
-2.  By allowing the eliminator to handle open terms, we can traverse application
-terms by uncurrying the underlying functions and adding an extra variable into
-the "context", as we'll see shortly.
+could be represented as the function λ γ → γ zero · γ (suc zero) : Λ^ 2 → Λ.  By
+allowing the eliminator to handle open terms, we can traverse application terms
+by uncurrying the underlying functions and adding an extra variable into the
+"context", as we'll see shortly.
 
 The other difference regarding Λ-elim is the ♭ modality that appears in many
 arguments.  Roughly speaking, the modality ensures that the eliminator cannot be
