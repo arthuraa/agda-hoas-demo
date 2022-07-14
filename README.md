@@ -1,11 +1,14 @@
-# An Agda proof of confluence using HOAS
+# An proof of confluence in Agda using HOAS
  
 This a proof-of-concept development to demonstrate how we can reason about
-higher-order abstract syntax (HOAS) in Agda using features that are already
-present in the language: the _flat modality_ `♭` and _custom rewrite rules_.
+higher-order abstract syntax (HOAS) in Agda using the _flat modality_ `♭` and
+_custom rewrite rules_.
 
-- `Lambda.agda` defines the syntax of the λ-calculus in Agda using a series of
-  postulates.
+- `Lambda.agda` defines a HOAS encoding of the λ-calculus in Agda using a series
+  of postulates.
+  
+- `DB.agda` proves that the HOAS encoding is isomorphic to a more conventional
+  well-scoped dependently typed encoding using de Bruijn indices.
 
 - `Par.agda` defines parallel reduction of terms, and proves that it satisfies
   the diamond property.
@@ -32,8 +35,8 @@ data Term = Var String
           | Abs String Term
 
 -- The term "λ x. x x"
-id :: Term
-id = Abs "x" (App (Var "x") (Var "x"))
+selfApp :: Term
+selfApp = Abs "x" (App (Var "x") (Var "x"))
 ```
 
 By contrast, here is a HOAS encoding of the same grammar:
@@ -42,18 +45,19 @@ By contrast, here is a HOAS encoding of the same grammar:
 data Term = App Term Term
           | Abs (Term -> Term)
           
-id :: Term
-id = Abs (\x -> App x x)
+selfApp :: Term
+selfApp = Abs (\x -> App x x)
 ```
 
 Unlike the more traditional encoding, the HOAS definition does not include a
 separate constructor for variables.  It instead uses Haskell variables to
-represent variables in the λ-calculus.  A term with a bound variable is
-represented using a function of type `Term -> Term`.  The main advantage of this
-technique is that we do not need to implement a substitution operator for terms:
-we can just use function application.
+represent variables in the λ-calculus.  A term with a bound variable is just a
+function of type `Term -> Term`.  The main advantage of this technique is that
+we do not need to implement a substitution operator for terms: we can just use
+function application.
 
-For example, here is how we can implement an evaluator for the λ-calculus.
+For example, here is how we can implement an evaluator for closed terms in the
+λ-calculus.
 
 ```
 beta :: Term -> Term -> Term
@@ -86,6 +90,16 @@ eval :: Term -> Term
 eval (App t1 t2) = beta (eval t1) (eval t2)
 eval t = t
 ```
+
+While this definition is not too cumbersome, it does sidestep one of the main
+issues with binding: variable capture. The definition of `subst x t1 t2` only
+works if the bound variables in `t1` do not appear free in `t2`; otherwise, one
+of the free variables of `t2` could enter the scope of a bound variable in `t1`,
+which wouldn't make sense.  We can make `subst` work on open terms as well by
+modifying the `Abs` case to rename the bound variable `y` if a clash occurs.  By
+contrast, the HOAS encoding prevents variable capture automatically, because it
+is impossible for a function parameter to alias a free variable that occurs
+outside its scope.
 
 ## Difficulties with HOAS
 
@@ -147,24 +161,34 @@ which contradicts our intuition above.
 ## A solution: modal type theory
 
 The two pathological examples above had something in common: both relied on the
-ability to do case analysis on terms.  We could rule out these pathological
-examples by forbidding case analysis on terms, but this would be too
-restrictive.  Fortunately, there is a better way out.  As explained by Martin
-Hofmann in his paper "[Semantical analysis of higher-order abstract syntax][1]",
-we can still perform case analysis on terms that _do not depend on free
-variables_.  We would still be able to write the `isApp`, `flip` and `f`
-functions above.  However, it wouldn't be possible to use such functions inside
-of `Abs`, like we did when defining `t` or `exotic` above -- intuitively,
-because it would require performing case analysis on a term variable introduced
-by the argument of `Abs`.  We can make this idea precise by working in a type
-theory extended with a modality `♭`.  Intuitively, `♭ T` describes values of
-type `T` that do not have free variables of type `Term`. Agda features a
-modality that behaves just like we need, so we can soundly postulate the
-existence of a type of HOAS terms.  This type comes with a case-analysis
-principle that allows us to write functions on HOAS terms and reason about them
-by structural induction.  Thanks to Agda's custom rewrite rules, we can describe
-the computational behavior of case analysis, thus allowing these functions to
-compute inside Agda.
+ability to do case analysis on terms.  This suggests that restricting case
+analysis might be a solution for making HOAS well behaved.  One such approach is
+implemented in [Twelf][2], a HOAS-based framework for specifying programming
+languages and logics.  In Twelf, function terms of type `A -> B` cannot perform
+case analysis on their arguments, but it is possible to do so when defining
+_relations_, as in logic programming.
+
+Another approach is to integrate HOAS in a more conventional type theory, by
+controlling which free variables can appear in a term when performing case
+analysis.  As explained by Martin Hofmann in his paper "[Semantical analysis of
+higher-order abstract syntax][1]", this can be done by extending type theory
+with a modality, an idea realized in [contextual modal type theory][3].  In such
+a system, we would still be able to write the `isApp`, `flip` and `f` functions
+above.  However, it wouldn't be possible to use such functions inside of `Abs`,
+like we did when defining `t` or `exotic` above -- intuitively, because it would
+require performing case analysis on a term variable introduced by the argument
+of `Abs`.
+
+This development shows how this idea can be implemented in Agda, by leveraging
+its `♭` modality.  Intuitively, we can use `♭ T` to describe elements of a type
+`T` that do not depend on free variables of the object languages we are modeling
+(for instance, the λ-calculus defined above).  With this modality, we can
+soundly postulate an eliminator for HOAS types, which allows us to perform case
+analysis and reason by structural induction. Thanks to Agda's custom rewrite
+rules, we can describe the computational behavior of case analysis, thus
+allowing these functions to compute inside Agda.
 
 
   [1]: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.122.6636&rep=rep1&type=pdf
+  [2]: http://twelf.org
+  [3]: https://www.cs.cmu.edu/~fp/papers/tocl07.pdf

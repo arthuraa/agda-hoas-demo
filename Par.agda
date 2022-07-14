@@ -58,16 +58,16 @@ data _⇒_ : Λ → Λ → Set where
 {-
 
 Although the definition of this type does not pose any issues, its default
-elimination is too weak to be useful.  To see why, suppose that we have two
-terms with n free variables, which we represent as functions t and t' of type Λ^
-n → Λ.  If we know that t γ ⇒ t' γ for every γ : Λ^ n, we would like to conclude
-that the last rule used to show this relation does not depend on γ.  Indeed, in
-a traditional paper proof, γ would correspond to object-level variables, and it
-does not make sense to test what the variable actually is to choose which rule
-to apply.  This type of reasoning is not possible with the eliminator we would
-obtain, because it requires eliminating an arbitrary _function_ of type ∀ γ → t
-γ ⇒ t' γ, and the default one only applies to types of the form t ⇒ t'.  We
-remedy this by adding the eliminator we need as a postulate.
+eliminator is too weak to be useful.  To see why, suppose that we have two terms
+t and t' with n free variables, represented as functions of type Λ^ n → Λ.  If t
+γ ⇒ t' γ for every γ : Λ^ n, we would like to conclude that the last rule used
+to show this relation does not depend on γ.  Indeed, in a traditional paper
+proof, γ would correspond to object-level variables, and it does not make sense
+to test what the variable actually is to choose which rule to apply.  This type
+of reasoning is not possible with the eliminator we would obtain, because it
+requires eliminating an arbitrary _function_ of type ∀ γ → t γ ⇒ t' γ, and the
+default one only applies to types of the form t ⇒ t'.  We remedy this by adding
+the eliminator we need as a postulate.
 
 -}
 
@@ -169,7 +169,7 @@ single proof of redution.  We need the function to state that t1 reduces.
   HR n t1 = ⇒-subst-refl n t1
 
   H· : _
-  H· n t11 t11' t12 t12' IH1 IH2 = λ γ2 γ2' p2 →
+  H· n t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
     ⇒-· (IH1 γ2 γ2' p2) (IH2 γ2 γ2' p2)
 
   Hƛ : _
@@ -179,7 +179,7 @@ single proof of redution.  We need the function to state that t1 reduces.
   Hβ : _
   Hβ n t11 t11' t12 t12' IH1 IH2 γ2 γ2' p2 =
     ⇒-β (λ x → IH1 (γ2 ▸ x) (γ2' ▸ x) (p2 ▸ₛ ⇒-refl x))
-          (IH2 γ2 γ2' p2)
+        (IH2 γ2 γ2' p2)
 
 {-
 
@@ -206,7 +206,7 @@ term-of-res (inj₁ t) = t
 term-of-res (inj₂ t) γ = ƛ (t γ)
 
 res-ƛ : ∀ {n} → Res (suc n) → Res n
-res-ƛ t = inj₂ (λ γ x → term-of-res t (γ ▸ x))
+res-ƛ t = inj₂ (curry (term-of-res t))
 
 res-· : ∀ {n} → Res n → Res n → Res n
 res-· (inj₁ t1) t2 = inj₁ (λ γ → t1 γ · term-of-res t2 γ)
@@ -334,11 +334,11 @@ that.
   Hβ' : _
   Hβ' n t1 t1' t2 t2' (to-♭ IH1) (to-♭ IH2) = to-♭ (Hβ n t1 t1' t2 t2' IH1 IH2)
 
-par-uncurry :
+⇒-uncurry :
   ∀ {@♭ n} {@♭ t1 t1' : Λ^ n → Λ → Λ} →
   (p : ∀ γ x → t1 γ x ⇒ t1' γ x) →
   ∀ γ → uncurry t1 γ ⇒ uncurry t1' γ
-par-uncurry p γ = p (λ v → γ (suc v)) (γ zero)
+⇒-uncurry p γ = p (λ v → γ (suc v)) (γ zero)
 
 ⇒ₛ-refl : ∀ {n} {γ : Λ^ n} → γ ⇒ₛ γ
 ⇒ₛ-refl v = ⇒-refl _
@@ -352,7 +352,7 @@ diag-β (inj₁ p1) p2 =
               (⇒ₛ-refl ▸ₛ diag-term-of-res p2 γ))
 diag-β {n} {t2 = t2} {t2' = t2'} (inj₂ {t1} {t1'} e p1) p2 rewrite e =
   inj₁ (λ γ → ⇒-ƛ (λ x → ⇒-subst (suc (suc n))
-                          (uncurry t1) (uncurry t1') (par-uncurry p1)
+                          (uncurry t1) (uncurry t1') (⇒-uncurry p1)
                           (γ ▸ t2 γ ▸ x) (γ ▸ term-of-res t2' γ ▸ x) (p x γ)))
   where
   p : ∀ x γ → (γ ▸ t2 γ ▸ x) ⇒ₛ (γ ▸ term-of-res t2' γ ▸ x)
