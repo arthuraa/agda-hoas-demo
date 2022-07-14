@@ -1,4 +1,4 @@
-# An proof of confluence in Agda using HOAS
+# A proof of confluence in Agda using HOAS
  
 This a proof-of-concept development to demonstrate how we can reason about
 higher-order abstract syntax (HOAS) in Agda using the _flat modality_ `♭` and
